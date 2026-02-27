@@ -8,7 +8,7 @@ Flask-based backend for Sprint 1 and Sprint 2 deliverables:
 - Authorization middleware and permission-protected endpoints
 - Role assignment API
 
-## Quick Start
+## Quick Start (Local)
 
 ```bash
 python3 -m venv .venv
@@ -19,6 +19,13 @@ python run.py
 
 Server runs on `http://127.0.0.1:5000`.
 
+## Quick Start (Docker)
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
 ## API Summary
 
 - `POST /api/auth/register`
@@ -27,6 +34,12 @@ Server runs on `http://127.0.0.1:5000`.
 - `GET /api/auth/me` (Bearer token required)
 - `GET /api/admin/dashboard` (requires `admin:read` permission)
 - `POST /api/rbac/assign-role` (requires `rbac:assign_role` permission)
+
+## Documentation
+
+- API details: `Documentation/API_Documentation_SP1_SP2.md`
+- UML class diagram: `Documentation/SP1_SP2_UML_Class_Diagram.md`
+- Secrets and deployment notes: `Documentation/Deployment_and_Secrets.md`
 
 ## Test
 
