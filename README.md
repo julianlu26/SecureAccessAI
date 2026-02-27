@@ -40,6 +40,7 @@ docker compose up --build
 - API details: `Documentation/API_Documentation_SP1_SP2.md`
 - UML class diagram: `Documentation/SP1_SP2_UML_Class_Diagram.md`
 - Secrets and deployment notes: `Documentation/Deployment_and_Secrets.md`
+- Week 11 verification specs: `Documentation/Week11_Activity1_Software_Testing_Verification.md`
 
 ## Test
 
