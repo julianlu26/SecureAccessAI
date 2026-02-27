@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  api:
+    build: .
+    container_name: secureaccessai-api
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    command: python run.py
