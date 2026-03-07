@@ -7,6 +7,13 @@ from app.services.authorization_service import AuthorizationEngine
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
+def _client_ip() -> str:
+    forwarded_for = request.headers.get("X-Forwarded-For", "")
+    if forwarded_for:
+        return forwarded_for.split(",")[0].strip()
+    return request.remote_addr or "unknown"
+
+
 @auth_bp.post("/register")
 def register():
     payload = request.get_json(silent=True) or {}
@@ -43,11 +50,15 @@ def login():
         return jsonify({"error": "email and password are required"}), 400
 
     try:
-        token = build_auth_service().login(email=email, password=password)
+        token, risk_assessment = build_auth_service().login(
+            email=email,
+            password=password,
+            ip_address=_client_ip(),
+        )
     except AuthenticationError as exc:
-        return jsonify({"error": str(exc)}), 401
+        return jsonify({"error": str(exc), "risk_assessment": exc.risk_assessment}), exc.status_code
 
-    return jsonify({"access_token": token})
+    return jsonify({"access_token": token, "risk_assessment": risk_assessment})
 
 
 @auth_bp.post("/logout")

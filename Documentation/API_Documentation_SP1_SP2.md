@@ -1,4 +1,4 @@
-# SecureAccessAI API Documentation (SP1 + SP2)
+# SecureAccessAI API Documentation (SP1 + SP3)
 
 Base URL: `http://127.0.0.1:5000`
 
@@ -34,9 +34,24 @@ Request body:
 Response `200`:
 ```json
 {
-  "access_token": "<jwt>"
+  "access_token": "<jwt>",
+  "risk_assessment": {
+    "score": 0,
+    "signals": {
+      "failed_attempt_burst": false,
+      "failed_attempt_count": 0,
+      "ip_change_detected": false,
+      "rate_limited": false
+    },
+    "reasons": []
+  }
 }
 ```
+
+Failure examples:
+- `401` invalid credentials
+- `403` repeated failed attempts threshold reached
+- `429` rate limiter triggered
 
 ### POST /api/auth/logout
 Headers:
@@ -83,6 +98,30 @@ Failure `403`:
 ```json
 {
   "error": "Forbidden"
+}
+```
+
+### GET /api/admin/security-events
+Permission required: `admin:read`
+
+Headers:
+- `Authorization: Bearer <jwt>`
+
+Success `200`:
+```json
+{
+  "events": [
+    {
+      "id": 1,
+      "email": "lead@example.com",
+      "ip_address": "10.0.0.31",
+      "event_type": "login",
+      "outcome": "success",
+      "risk_score": 30,
+      "detail": "new IP compared with recent successful login",
+      "created_at": "2026-03-07T10:00:00"
+    }
+  ]
 }
 ```
 

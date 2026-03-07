@@ -72,3 +72,21 @@ class SessionToken(db.Model):
     revoked = db.Column(db.Boolean, default=False, nullable=False)
 
     user = db.relationship("User", back_populates="sessions")
+
+
+class SecurityEvent(db.Model):
+    __tablename__ = "security_events"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    email = db.Column(db.String(120), nullable=False)
+    ip_address = db.Column(db.String(64), nullable=False)
+    event_type = db.Column(db.String(64), nullable=False)
+    outcome = db.Column(db.String(32), nullable=False)
+    risk_score = db.Column(db.Integer, default=0, nullable=False)
+    detail = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), nullable=False
+    )
+
+    user = db.relationship("User", backref="security_events")

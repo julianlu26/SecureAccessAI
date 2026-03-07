@@ -2,15 +2,20 @@ from datetime import UTC, datetime, timedelta
 import uuid
 
 import jwt
+from flask import current_app, has_app_context
 
 from app.config import Config
 from app.extensions import db
 from app.models import Role, SessionToken, User
 from app.repositories.user_repository import UserRepository
+from app.services.security_service import build_security_components
 
 
 class AuthenticationError(Exception):
-    pass
+    def __init__(self, message: str, *, status_code: int = 401, risk_assessment: dict | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+        self.risk_assessment = risk_assessment or {}
 
 
 class AuthenticationService:
@@ -39,10 +44,90 @@ class AuthenticationService:
         db.session.commit()
         return user
 
-    def login(self, email: str, password: str) -> str:
+    def login(self, email: str, password: str, ip_address: str) -> tuple[str, dict]:
+        ip_monitor, rate_limiter, anomaly_detector, threat_engine = build_security_components()
+
+        if not rate_limiter.allow(ip_address=ip_address, email=email):
+            signals = anomaly_detector.detect(
+                user=None,
+                email=email,
+                ip_address=ip_address,
+                rate_limited=True,
+            )
+            risk_score, reasons = threat_engine.score(signals)
+            ip_monitor.log_event(
+                user=None,
+                email=email,
+                ip_address=ip_address,
+                event_type="login",
+                outcome="blocked",
+                risk_score=risk_score,
+                detail="rate limit triggered",
+            )
+            db.session.commit()
+            raise AuthenticationError(
+                "Too many login attempts",
+                status_code=429,
+                risk_assessment={"score": risk_score, "signals": signals, "reasons": reasons},
+            )
+
+        failed_attempts = ip_monitor.recent_failed_attempts(
+            email=email,
+            ip_address=ip_address,
+            window_minutes=self.config.LOGIN_FAILURE_WINDOW_MINUTES,
+        )
+        if failed_attempts >= self.config.LOGIN_FAILURE_THRESHOLD:
+            signals = anomaly_detector.detect(
+                user=None,
+                email=email,
+                ip_address=ip_address,
+                rate_limited=False,
+            )
+            risk_score, reasons = threat_engine.score(signals)
+            ip_monitor.log_event(
+                user=None,
+                email=email,
+                ip_address=ip_address,
+                event_type="login",
+                outcome="blocked",
+                risk_score=risk_score,
+                detail="failure threshold reached",
+            )
+            db.session.commit()
+            raise AuthenticationError(
+                "Login temporarily blocked due to repeated failed attempts",
+                status_code=403,
+                risk_assessment={"score": risk_score, "signals": signals, "reasons": reasons},
+            )
+
         user = self.user_repo.get_by_email(email)
         if not user or not user.check_password(password):
-            raise AuthenticationError("Invalid credentials")
+            event = ip_monitor.log_event(
+                user=user,
+                email=email,
+                ip_address=ip_address,
+                event_type="login",
+                outcome="failed",
+                detail="invalid credentials",
+            )
+            signals = anomaly_detector.detect(
+                user=user,
+                email=email,
+                ip_address=ip_address,
+                rate_limited=False,
+            )
+            risk_score, reasons = threat_engine.score(signals)
+            event.risk_score = risk_score
+            event.detail = ", ".join(reasons) if reasons else "invalid credentials"
+            db.session.commit()
+            failure_message = "Invalid credentials"
+            if signals["failed_attempt_count"] >= self.config.LOGIN_FAILURE_THRESHOLD:
+                failure_message = "Login temporarily blocked due to repeated failed attempts"
+            raise AuthenticationError(
+                failure_message,
+                status_code=403 if failure_message != "Invalid credentials" else 401,
+                risk_assessment={"score": risk_score, "signals": signals, "reasons": reasons},
+            )
 
         if not user.is_active:
             raise AuthenticationError("User is inactive")
@@ -68,9 +153,25 @@ class AuthenticationService:
             revoked=False,
         )
         db.session.add(session)
+        signals = anomaly_detector.detect(
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            rate_limited=False,
+        )
+        risk_score, reasons = threat_engine.score(signals)
+        ip_monitor.log_event(
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            event_type="login",
+            outcome="success",
+            risk_score=risk_score,
+            detail=", ".join(reasons) if reasons else "low risk",
+        )
         db.session.commit()
 
-        return token
+        return token, {"score": risk_score, "signals": signals, "reasons": reasons}
 
     def logout(self, token: str) -> None:
         payload = jwt.decode(token, self.secret_key, algorithms=["HS256"])
@@ -106,7 +207,23 @@ class AuthenticationService:
 
         return user
 
+    @property
+    def config(self) -> Config:
+        config = Config()
+        if has_app_context():
+            for key in (
+                "SECRET_KEY",
+                "JWT_EXPIRES_MINUTES",
+                "LOGIN_FAILURE_THRESHOLD",
+                "LOGIN_FAILURE_WINDOW_MINUTES",
+            ):
+                setattr(config, key, current_app.config.get(key, getattr(config, key)))
+        return config
+
 
 def build_auth_service() -> AuthenticationService:
     cfg = Config()
+    if has_app_context():
+        cfg.SECRET_KEY = current_app.config.get("SECRET_KEY", cfg.SECRET_KEY)
+        cfg.JWT_EXPIRES_MINUTES = current_app.config.get("JWT_EXPIRES_MINUTES", cfg.JWT_EXPIRES_MINUTES)
     return AuthenticationService(secret_key=cfg.SECRET_KEY, expires_minutes=cfg.JWT_EXPIRES_MINUTES)

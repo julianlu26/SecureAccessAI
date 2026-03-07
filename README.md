@@ -1,12 +1,15 @@
-# SecureAccessAI (SP1 + SP2)
+# SecureAccessAI (SP1 + SP3)
 
-Flask-based backend for Sprint 1 and Sprint 2 deliverables:
+Flask-based backend for Sprint 1 through Sprint 3 deliverables:
 - Core authentication (register/login/logout/me)
 - Password hashing with bcrypt
 - Session token validation with JWT + persisted session records
 - RBAC models (User, Role, Permission)
 - Authorization middleware and permission-protected endpoints
 - Role assignment API
+- IP-based login event logging
+- Login attempt threshold blocking and rate limiting
+- MVP anomaly detection and threat scoring
 
 ## Quick Start (Local)
 
@@ -33,6 +36,7 @@ docker compose up --build
 - `POST /api/auth/logout` (Bearer token required)
 - `GET /api/auth/me` (Bearer token required)
 - `GET /api/admin/dashboard` (requires `admin:read` permission)
+- `GET /api/admin/security-events` (requires `admin:read` permission)
 - `POST /api/rbac/assign-role` (requires `rbac:assign_role` permission)
 
 ## Documentation
