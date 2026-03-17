@@ -45,10 +45,14 @@ docker compose up --build
 
 - API details: `Documentation/API_Documentation_SP1_SP2.md`
 - UML class diagram: `Documentation/SP1_SP2_UML_Class_Diagram.md`
+- Final UML class diagram: `Documentation/Final_UML_Class_Diagram.md`
 - Secrets and deployment notes: `Documentation/Deployment_and_Secrets.md`
+- Docker deployment runbook: `Documentation/Docker_Deployment_Runbook.md`
 - Security test scenarios and runtime config: `Documentation/Security_Test_Scenarios_and_Runtime_Config.md`
 - Threat simulation assumptions and monitoring outputs: `Documentation/Threat_Simulation_Assumptions_and_Monitoring.md`
 - Submission readiness checklist: `Documentation/Submission_Readiness_Checklist.md`
+- Final documentation index: `Documentation/Final_Project_Documentation_Index.md`
+- Reflection input materials: `Documentation/Reflection_Input_Materials.md`
 - Week 11 verification specs: `Documentation/Week11_Activity1_Software_Testing_Verification.md`
 
 ## Test
