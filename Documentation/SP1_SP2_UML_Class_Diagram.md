@@ -1,5 +1,7 @@
 # SP1 + SP2 UML Class Diagram (Mermaid)
 
+Related notes: see `Documentation/Architecture_Notes_SP1_SP2.md` for layer responsibilities and early design decisions.
+
 ```mermaid
 classDiagram
     class User {

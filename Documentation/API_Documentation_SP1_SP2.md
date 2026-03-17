@@ -101,6 +101,14 @@ Failure `403`:
 }
 ```
 
+### RBAC Protection Notes
+
+- `GET /api/admin/dashboard` requires `admin:read`
+- `GET /api/admin/security-events` requires `admin:read`
+- `GET /api/admin/audit-logs` requires `admin:read`
+- `GET /api/admin/risk-summary` requires `admin:read`
+- `POST /api/rbac/assign-role` requires `rbac:assign_role`
+
 ### GET /api/admin/security-events
 Permission required: `admin:read`
 
@@ -200,3 +208,7 @@ Success `200`:
   "roles": ["user", "admin"]
 }
 ```
+
+Failure cases:
+- `400` when `email` or `role` is missing
+- `404` when the target user or requested role does not exist
