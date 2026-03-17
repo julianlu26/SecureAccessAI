@@ -36,6 +36,8 @@ docker compose up --build
 - `POST /api/auth/logout` (Bearer token required)
 - `GET /api/auth/me` (Bearer token required)
 - `GET /api/admin/dashboard` (requires `admin:read` permission)
+- `GET /api/admin/audit-logs` (requires `admin:read` permission)
+- `GET /api/admin/risk-summary` (requires `admin:read` permission)
 - `GET /api/admin/security-events` (requires `admin:read` permission)
 - `POST /api/rbac/assign-role` (requires `rbac:assign_role` permission)
 
@@ -46,6 +48,7 @@ docker compose up --build
 - Secrets and deployment notes: `Documentation/Deployment_and_Secrets.md`
 - Security test scenarios and runtime config: `Documentation/Security_Test_Scenarios_and_Runtime_Config.md`
 - Threat simulation assumptions and monitoring outputs: `Documentation/Threat_Simulation_Assumptions_and_Monitoring.md`
+- Submission readiness checklist: `Documentation/Submission_Readiness_Checklist.md`
 - Week 11 verification specs: `Documentation/Week11_Activity1_Software_Testing_Verification.md`
 
 ## Test
