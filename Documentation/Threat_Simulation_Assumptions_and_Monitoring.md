@@ -33,6 +33,7 @@ Security monitoring output is currently exposed through:
 - login responses with `risk_assessment`
 - persisted `security_events` records
 - admin endpoint `GET /api/admin/security-events`
+- admin endpoint `GET /api/admin/risk-summary`
 
 ## Example Security Event Output
 
@@ -62,3 +63,10 @@ Security monitoring output is currently exposed through:
 - No geolocation, device fingerprinting, or ASN analysis.
 - No dashboard visualization yet; monitoring is currently API-based.
 - No background alerting pipeline; review is manual through admin APIs and logs.
+
+## Monitoring Review Checklist
+
+- Confirm whether recent blocked attempts exist
+- Confirm whether any user has more than one recent source IP
+- Confirm whether the highest risk score is increasing across repeated attempts
+- Confirm whether audit logs and security events tell a consistent story

@@ -42,6 +42,21 @@ The following runtime variables control the security behavior of the authenticat
 4. Perform a successful login from a different IP and inspect the returned risk signals.
 5. Call `GET /api/admin/security-events` and verify that the expected events appear in reverse chronological order.
 
+## Execution Commands
+
+```bash
+pytest -q
+docker compose config
+curl http://127.0.0.1:5000/health
+```
+
+## Evidence Capture Suggestions
+
+- Screenshot or export the pytest result
+- Capture the `429` response body for rate-limiter evidence
+- Capture the `403` threshold-block response body
+- Capture one admin `security-events` response showing recent entries
+
 ## Automated Coverage
 
 Current automated tests cover:
