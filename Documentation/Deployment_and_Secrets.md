@@ -19,9 +19,33 @@
 
 ## GitHub Actions
 - CI runs tests on each push/PR.
+- CI validates `docker compose` configuration before the test step.
 - Do not commit `.env`.
 - If deployment is added later, store secrets in repository settings:
   - `Settings -> Secrets and variables -> Actions`.
+
+## Deployment Workflow Updates
+
+Recommended lightweight deployment workflow:
+
+1. Pull latest `main`
+2. Copy or refresh `.env`
+3. Run `docker compose build`
+4. Run `docker compose up -d`
+5. Check `/health`
+
+## GitHub Actions Secret Mapping
+
+If the project later uses hosted deployment, the following repository secrets are recommended:
+
+- `SECRET_KEY`
+- `DATABASE_URL`
+- `JWT_EXPIRES_MINUTES`
+- `LOGIN_RATE_LIMIT_COUNT`
+- `LOGIN_RATE_LIMIT_WINDOW_SECONDS`
+- `LOGIN_FAILURE_THRESHOLD`
+- `LOGIN_FAILURE_WINDOW_MINUTES`
+- `RISK_IP_LOOKBACK_HOURS`
 
 ## Minimal Production Notes
 - Use managed DB instead of local SQLite for production.
