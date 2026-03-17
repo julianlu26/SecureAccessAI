@@ -133,3 +133,40 @@ def test_sp3_ip_change_generates_risk_signal_and_security_event_feed(client):
     events = client.get("/api/admin/security-events", headers=_auth_header(first_token))
     assert events.status_code == 200
     assert len(events.get_json()["events"]) >= 2
+
+
+def test_sp4_dashboard_risk_summary_and_audit_logs(client):
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    _register(client, "peer", "peer@example.com", "Pass1234!")
+
+    lead_login = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.0.40")
+    lead_token = lead_login.get_json()["access_token"]
+
+    _login_from_ip(client, "peer@example.com", "wrong-password", "10.0.0.41")
+    _login_from_ip(client, "peer@example.com", "wrong-password", "10.0.0.41")
+    _login_from_ip(client, "peer@example.com", "wrong-password", "10.0.0.41")
+
+    assign = client.post(
+        "/api/rbac/assign-role",
+        json={"email": "peer@example.com", "role": "admin"},
+        headers=_auth_header(lead_token),
+    )
+    assert assign.status_code == 200
+
+    dashboard = client.get("/api/admin/dashboard", headers=_auth_header(lead_token))
+    assert dashboard.status_code == 200
+    dashboard_json = dashboard.get_json()
+    assert dashboard_json["system_summary"]["security_event_count"] >= 4
+    assert dashboard_json["system_summary"]["audit_log_count"] >= 4
+    assert len(dashboard_json["recent_audit_logs"]) >= 1
+
+    risk_summary = client.get("/api/admin/risk-summary", headers=_auth_header(lead_token))
+    assert risk_summary.status_code == 200
+    users = risk_summary.get_json()["risk_summary"]["users"]
+    assert any(user["email"] == "peer@example.com" for user in users)
+
+    audit_logs = client.get("/api/admin/audit-logs", headers=_auth_header(lead_token))
+    assert audit_logs.status_code == 200
+    actions = {log["action"] for log in audit_logs.get_json()["logs"]}
+    assert "login" in actions
+    assert "assign_role" in actions

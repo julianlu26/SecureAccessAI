@@ -1,8 +1,9 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, g, jsonify, request
 
 from app.extensions import db
 from app.middleware.auth import require_permission
 from app.models import User
+from app.services.audit_service import AuditLogger
 from app.services.authorization_service import RBACService
 
 rbac_bp = Blueprint("rbac", __name__, url_prefix="/api/rbac")
@@ -26,5 +27,12 @@ def assign_role():
     if not ok:
         return jsonify({"error": "Role not found"}), 404
 
+    AuditLogger().log(
+        actor_user=g.current_user,
+        action="assign_role",
+        status="success",
+        target_email=user.email,
+        detail=f"assigned role={role_name}",
+    )
     db.session.commit()
     return jsonify({"message": "Role assigned", "roles": [r.name for r in user.roles]})

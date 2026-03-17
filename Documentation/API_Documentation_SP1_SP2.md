@@ -125,6 +125,63 @@ Success `200`:
 }
 ```
 
+### GET /api/admin/audit-logs
+Permission required: `admin:read`
+
+Headers:
+- `Authorization: Bearer <jwt>`
+
+Success `200`:
+```json
+{
+  "logs": [
+    {
+      "id": 1,
+      "actor_user_id": 1,
+      "action": "login",
+      "target_email": "lead@example.com",
+      "status": "success",
+      "detail": "low risk",
+      "created_at": "2026-03-18T10:00:00"
+    }
+  ]
+}
+```
+
+### GET /api/admin/risk-summary
+Permission required: `admin:read`
+
+Headers:
+- `Authorization: Bearer <jwt>`
+
+Success `200`:
+```json
+{
+  "system_summary": {
+    "security_event_count": 6,
+    "audit_log_count": 5,
+    "blocked_attempt_count": 1,
+    "failed_attempt_count": 3
+  },
+  "risk_summary": {
+    "high_risk_user_count": 1,
+    "medium_risk_user_count": 0,
+    "users": [
+      {
+        "email": "peer@example.com",
+        "failed_logins": 3,
+        "blocked_logins": 1,
+        "unique_ip_count": 1,
+        "highest_risk_score": 40,
+        "last_event_at": "2026-03-18T10:10:00",
+        "evaluated_risk_score": 50,
+        "risk_level": "medium"
+      }
+    ]
+  }
+}
+```
+
 ### POST /api/rbac/assign-role
 Permission required: `rbac:assign_role`
 
@@ -143,4 +200,3 @@ Success `200`:
   "roles": ["user", "admin"]
 }
 ```
-# update by teammate

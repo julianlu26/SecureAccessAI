@@ -90,3 +90,19 @@ class SecurityEvent(db.Model):
     )
 
     user = db.relationship("User", backref="security_events")
+
+
+class AuditLog(db.Model):
+    __tablename__ = "audit_logs"
+
+    id = db.Column(db.Integer, primary_key=True)
+    actor_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    action = db.Column(db.String(64), nullable=False)
+    target_email = db.Column(db.String(120), nullable=True)
+    status = db.Column(db.String(32), nullable=False)
+    detail = db.Column(db.String(255), nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), nullable=False
+    )
+
+    actor_user = db.relationship("User", backref="audit_logs")

@@ -8,6 +8,7 @@ from app.config import Config
 from app.extensions import db
 from app.models import Role, SessionToken, User
 from app.repositories.user_repository import UserRepository
+from app.services.audit_service import AuditLogger
 from app.services.security_service import build_security_components
 
 
@@ -23,6 +24,7 @@ class AuthenticationService:
         self.user_repo = UserRepository()
         self.secret_key = secret_key
         self.expires_minutes = expires_minutes
+        self.audit_logger = AuditLogger()
 
     def register(self, username: str, email: str, password: str) -> User:
         existing = self.user_repo.get_by_email(email)
@@ -41,6 +43,13 @@ class AuthenticationService:
         elif user_role:
             user.roles.append(user_role)
 
+        self.audit_logger.log(
+            actor_user=user,
+            action="register",
+            status="success",
+            target_email=user.email,
+            detail="account created",
+        )
         db.session.commit()
         return user
 
@@ -62,6 +71,13 @@ class AuthenticationService:
                 event_type="login",
                 outcome="blocked",
                 risk_score=risk_score,
+                detail="rate limit triggered",
+            )
+            self.audit_logger.log(
+                actor_user=None,
+                action="login",
+                status="blocked",
+                target_email=email,
                 detail="rate limit triggered",
             )
             db.session.commit()
@@ -93,6 +109,13 @@ class AuthenticationService:
                 risk_score=risk_score,
                 detail="failure threshold reached",
             )
+            self.audit_logger.log(
+                actor_user=None,
+                action="login",
+                status="blocked",
+                target_email=email,
+                detail="failure threshold reached",
+            )
             db.session.commit()
             raise AuthenticationError(
                 "Login temporarily blocked due to repeated failed attempts",
@@ -119,6 +142,13 @@ class AuthenticationService:
             risk_score, reasons = threat_engine.score(signals)
             event.risk_score = risk_score
             event.detail = ", ".join(reasons) if reasons else "invalid credentials"
+            self.audit_logger.log(
+                actor_user=user,
+                action="login",
+                status="failed",
+                target_email=email,
+                detail=event.detail,
+            )
             db.session.commit()
             failure_message = "Invalid credentials"
             if signals["failed_attempt_count"] >= self.config.LOGIN_FAILURE_THRESHOLD:
@@ -169,6 +199,13 @@ class AuthenticationService:
             risk_score=risk_score,
             detail=", ".join(reasons) if reasons else "low risk",
         )
+        self.audit_logger.log(
+            actor_user=user,
+            action="login",
+            status="success",
+            target_email=email,
+            detail=", ".join(reasons) if reasons else "low risk",
+        )
         db.session.commit()
 
         return token, {"score": risk_score, "signals": signals, "reasons": reasons}
@@ -179,6 +216,13 @@ class AuthenticationService:
         session = SessionToken.query.filter_by(jti=jti).first()
         if session:
             session.revoked = True
+            self.audit_logger.log(
+                actor_user=session.user,
+                action="logout",
+                status="success",
+                target_email=session.user.email,
+                detail="session revoked",
+            )
             db.session.commit()
 
     def validate_token(self, token: str) -> User:
