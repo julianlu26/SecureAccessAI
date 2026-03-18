@@ -25,6 +25,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Prepare CI env file
+        run: cp .env.example .env
+
       - name: Validate Docker Compose
         run: |
           if docker compose version >/dev/null 2>&1; then
