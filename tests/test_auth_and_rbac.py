@@ -175,3 +175,15 @@ def test_health_endpoint_returns_ok(client):
     response = client.get('/health')
     assert response.status_code == 200
     assert response.get_json() == {'status': 'ok'}
+
+def test_me_endpoint_returns_roles_and_permissions(client):
+    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
+    token = _login(client, 'lead@example.com', 'Pass1234!').get_json()['access_token']
+
+    response = client.get('/api/auth/me', headers=_auth_header(token))
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload['email'] == 'lead@example.com'
+    assert 'admin' in payload['roles']
+    assert 'admin:read' in payload['permissions']
+    assert 'rbac:assign_role' in payload['permissions']
