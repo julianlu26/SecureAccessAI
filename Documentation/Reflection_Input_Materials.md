@@ -33,3 +33,9 @@ This document captures concise reflection points that can be used in the final r
 
 - `YUAN LU`: backend implementation, security logic, integration, Jira progress updates
 - `shang ma`: Docker/deployment documentation, final documentation package, reflection and runbook materials
+
+## Communication Practices
+
+- Weekly task review in Jira helped keep ownership visible.
+- Git commit linking made contribution tracking more transparent.
+- Splitting implementation and documentation work reduced overlap while keeping joint accountability.
