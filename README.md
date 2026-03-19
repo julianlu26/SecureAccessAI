@@ -1,6 +1,6 @@
 # SecureAccessAI (SP1 + SP3)
 
-Flask-based backend for Sprint 1 through Sprint 3 deliverables:
+Flask-based backend for the final SecureAccessAI classroom release:
 - Core authentication (register/login/logout/me)
 - Password hashing with bcrypt
 - Session token validation with JWT + persisted session records
@@ -62,3 +62,10 @@ docker compose up --build
 ```bash
 pytest -q
 ```
+
+
+## Release Snapshot
+
+- Release tag: 
+- CI workflow validates dependencies, compose configuration, and pytest coverage
+- Current scope includes authentication, RBAC, threat simulation, and audit/risk summary endpoints
