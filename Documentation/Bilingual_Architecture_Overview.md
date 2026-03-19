@@ -48,3 +48,11 @@ flowchart TB
 - 请求先进入路由层，再经过认证和授权中间件，然后交给不同服务模块处理。
 - 服务层负责认证、RBAC、安全监测、审计日志和风险摘要。
 - 最终由模型和数据库层保存用户、角色、会话和安全事件等数据。
+
+## Request Flow Steps
+
+1. The client sends a request to the Flask API.
+2. Authentication middleware validates the token when required.
+3. Authorization middleware checks the required permission for protected routes.
+4. Service classes apply business logic and security rules.
+5. Models and repositories persist the resulting records into the database.
