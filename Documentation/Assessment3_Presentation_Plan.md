@@ -37,3 +37,9 @@ This document provides a concise presentation structure for the SecureAccessAI f
 - Use the architecture diagram to explain system structure quickly.
 - Emphasize that the AI-related risk monitoring is implemented as a rules-based MVP rather than a full machine-learning model.
 - Keep answers concrete: product, process, testing, teamwork, and reflection.
+
+## Timing Guide
+
+- Slides 1 to 5: about 2 minutes 30 seconds
+- Slides 6 to 9: about 2 minutes
+- Slide 10 and Q and A handoff: about 30 seconds
