@@ -86,3 +86,16 @@ docker compose up -d
 
 The current classroom deployment uses SQLite and is suitable for demonstration only.
 For production-style deployment, replace SQLite with a managed database and add persistent storage strategy.
+
+## Rollback Procedure
+
+If a deployment update fails, use the following rollback sequence:
+
+1. Stop the current containers.
+2. Revert to the previous known-good commit.
+3. Rebuild the image.
+4. Start the stack again and re-check the health endpoint.
+
+## Environment Validation
+
+Before deployment, confirm that the env file includes SECRET_KEY, DATABASE_URL, JWT expiry, rate-limit settings, and failure-threshold settings.
