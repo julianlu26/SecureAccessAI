@@ -198,3 +198,25 @@ def test_non_admin_is_denied_from_all_admin_endpoints(client):
     assert client.get('/api/admin/security-events', headers=headers).status_code == 403
     assert client.get('/api/admin/audit-logs', headers=headers).status_code == 403
     assert client.get('/api/admin/risk-summary', headers=headers).status_code == 403
+
+def test_assign_role_validation_errors(client):
+    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
+    token = _login(client, 'lead@example.com', 'Pass1234!').get_json()['access_token']
+    headers = _auth_header(token)
+
+    missing = client.post('/api/rbac/assign-role', json={'email': 'peer@example.com'}, headers=headers)
+    assert missing.status_code == 400
+
+    unknown_user = client.post(
+        '/api/rbac/assign-role',
+        json={'email': 'missing@example.com', 'role': 'admin'},
+        headers=headers,
+    )
+    assert unknown_user.status_code == 404
+
+    unknown_role = client.post(
+        '/api/rbac/assign-role',
+        json={'email': 'lead@example.com', 'role': 'ghost-role'},
+        headers=headers,
+    )
+    assert unknown_role.status_code == 404
