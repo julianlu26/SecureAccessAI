@@ -220,3 +220,17 @@ def test_assign_role_validation_errors(client):
         headers=headers,
     )
     assert unknown_role.status_code == 404
+
+def test_dashboard_limits_recent_event_and_audit_lists(client):
+    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
+    _register(client, 'peer', 'peer@example.com', 'Pass1234!')
+    token = _login_from_ip(client, 'lead@example.com', 'Pass1234!', '10.0.0.50').get_json()['access_token']
+
+    for index in range(6):
+        _login_from_ip(client, 'peer@example.com', 'wrong-password', f'10.0.1.{index}')
+
+    dashboard = client.get('/api/admin/dashboard', headers=_auth_header(token))
+    assert dashboard.status_code == 200
+    payload = dashboard.get_json()
+    assert len(payload['recent_security_events']) <= 5
+    assert len(payload['recent_audit_logs']) <= 5
