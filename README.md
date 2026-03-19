@@ -70,3 +70,10 @@ pytest -q
 - Release tag: `v1.0.0`
 - CI workflow validates dependencies, compose configuration, and pytest coverage
 - Current scope includes authentication, RBAC, threat simulation, and audit/risk summary endpoints
+
+
+## Assessment Artefacts
+
+- Assessment 2 project report and reflection report prepared for submission
+- Assessment 3 presentation PDF and speaking notes prepared for demonstration
+- Release tag  created for the final classroom snapshot
