@@ -76,4 +76,4 @@ pytest -q
 
 - Assessment 2 project report and reflection report prepared for submission
 - Assessment 3 presentation PDF and speaking notes prepared for demonstration
-- Release tag  created for the final classroom snapshot
+- Release tag v1.0.0 created for the final classroom snapshot

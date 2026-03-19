@@ -7,9 +7,10 @@ Base URL: `http://127.0.0.1:5000`
 ### GET /health
 No authentication required.
 
-Success :
-
-
+Success 200:
+{
+  status: ok
+}
 
 ### POST /api/auth/register
 Request body:
