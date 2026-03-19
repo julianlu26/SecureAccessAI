@@ -187,3 +187,14 @@ def test_me_endpoint_returns_roles_and_permissions(client):
     assert 'admin' in payload['roles']
     assert 'admin:read' in payload['permissions']
     assert 'rbac:assign_role' in payload['permissions']
+
+def test_non_admin_is_denied_from_all_admin_endpoints(client):
+    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
+    _register(client, 'peer', 'peer@example.com', 'Pass1234!')
+    peer_token = _login(client, 'peer@example.com', 'Pass1234!').get_json()['access_token']
+    headers = _auth_header(peer_token)
+
+    assert client.get('/api/admin/dashboard', headers=headers).status_code == 403
+    assert client.get('/api/admin/security-events', headers=headers).status_code == 403
+    assert client.get('/api/admin/audit-logs', headers=headers).status_code == 403
+    assert client.get('/api/admin/risk-summary', headers=headers).status_code == 403
