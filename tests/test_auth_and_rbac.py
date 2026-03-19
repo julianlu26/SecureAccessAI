@@ -170,3 +170,8 @@ def test_sp4_dashboard_risk_summary_and_audit_logs(client):
     actions = {log["action"] for log in audit_logs.get_json()["logs"]}
     assert "login" in actions
     assert "assign_role" in actions
+
+def test_health_endpoint_returns_ok(client):
+    response = client.get('/health')
+    assert response.status_code == 200
+    assert response.get_json() == {'status': 'ok'}
