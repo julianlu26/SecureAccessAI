@@ -30,3 +30,9 @@ This index collects the final written artefacts for SecureAccessAI.
 4. Security testing and verification
 5. Deployment/runbook
 6. Reflection input materials
+
+## Release and Demo Artefacts
+
+- Documentation/Assessment3_Presentation_Plan.md
+- Documentation/API_Smoke_Test_Checklist.md
+- Documentation/Bilingual_Architecture_Overview.md
