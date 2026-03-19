@@ -31,6 +31,7 @@ docker compose up --build
 
 ## API Summary
 
+- `GET /health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `POST /api/auth/logout` (Bearer token required)
@@ -66,6 +67,6 @@ pytest -q
 
 ## Release Snapshot
 
-- Release tag: 
+- Release tag: `v1.0.0`
 - CI workflow validates dependencies, compose configuration, and pytest coverage
 - Current scope includes authentication, RBAC, threat simulation, and audit/risk summary endpoints
