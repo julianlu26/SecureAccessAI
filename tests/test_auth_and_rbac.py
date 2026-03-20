@@ -256,3 +256,13 @@ def test_risk_summary_includes_risk_levels_and_system_counts(client):
     assert security_event_count in payload[system_summary]
     for user in payload[risk_summary][users]:
         assert user[risk_level] in {low, medium, high}
+
+def test_event_and_audit_feeds_return_expected_keys(client):
+    _register(client, lead, lead@example.com, Pass1234!)
+    token = _login(client, lead@example.com, Pass1234!).get_json()[access_token]
+    _login_from_ip(client, lead@example.com, wrong-password, 10.0.0.92)
+
+    events = client.get(/api/admin/security-events, headers=_auth_header(token)).get_json()[events]
+    logs = client.get(/api/admin/audit-logs, headers=_auth_header(token)).get_json()[logs]
+    assert {id, email, ip_address, event_type, outcome, risk_score, detail, created_at} <= set(events[0].keys())
+    assert {id, actor_user_id, action, target_email, status, detail, created_at} <= set(logs[0].keys())
