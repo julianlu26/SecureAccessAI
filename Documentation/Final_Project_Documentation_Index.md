@@ -36,3 +36,10 @@ This index collects the final written artefacts for SecureAccessAI.
 - Documentation/Assessment3_Presentation_Plan.md
 - Documentation/API_Smoke_Test_Checklist.md
 - Documentation/Bilingual_Architecture_Overview.md
+- Documentation/Rehearsal_Checklist.md
+- Documentation/Release_Notes_v1.0.0.md
+
+## Team Delivery Support Notes
+
+- Use the rehearsal checklist before recording the Assessment 3 video.
+- Use the release notes file when publishing or describing the final v1.0.0 snapshot.
