@@ -17,6 +17,8 @@ Flask-based backend for the final SecureAccessAI classroom release:
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
+cp .env.example .env
+# Set SECRET_KEY to a strong value before starting
 python run.py
 ```
 
@@ -26,6 +28,9 @@ Server runs on `http://127.0.0.1:5000`.
 
 ```bash
 cp .env.example .env
+# Set SECRET_KEY before starting
+# Optionally set BOOTSTRAP_ADMIN_EMAIL for the first admin account
+# Only set TRUST_PROXY_HEADERS=true when running behind a trusted reverse proxy
 docker compose up --build
 ```
 
@@ -41,6 +46,12 @@ docker compose up --build
 - `GET /api/admin/risk-summary` (requires `admin:read` permission)
 - `GET /api/admin/security-events` (requires `admin:read` permission)
 - `POST /api/rbac/assign-role` (requires `rbac:assign_role` permission)
+
+## Security Configuration Notes
+
+- The application will refuse to start with a default `SECRET_KEY` outside test mode.
+- `TRUST_PROXY_HEADERS=true` should only be enabled behind a trusted proxy or gateway.
+- `BOOTSTRAP_ADMIN_EMAIL` can be used to explicitly define which first account receives the admin role.
 
 ## Documentation
 
@@ -64,13 +75,11 @@ docker compose up --build
 pytest -q
 ```
 
-
 ## Release Snapshot
 
 - Release tag: `v1.0.0`
 - CI workflow validates dependencies, compose configuration, and pytest coverage
 - Current scope includes authentication, RBAC, threat simulation, and audit/risk summary endpoints
-
 
 ## Assessment Artefacts
 

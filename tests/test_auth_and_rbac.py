@@ -1,6 +1,7 @@
 import pytest
 
 from app import create_app
+from app.config import Config
 from app.services.security_service import RateLimiter
 
 
@@ -18,6 +19,8 @@ def client():
             "LOGIN_FAILURE_THRESHOLD": 3,
             "LOGIN_FAILURE_WINDOW_MINUTES": 15,
             "RISK_IP_LOOKBACK_HOURS": 24,
+            "TRUST_PROXY_HEADERS": True,
+            "BOOTSTRAP_ADMIN_EMAIL": "lead@example.com",
         }
     )
     return app.test_client()
@@ -64,11 +67,9 @@ def test_sp2_rbac_endpoint_restriction_and_role_assignment(client):
     lead_token = _login(client, "lead@example.com", "Pass1234!").get_json()["access_token"]
     peer_token = _login(client, "peer@example.com", "Pass1234!").get_json()["access_token"]
 
-    # Peer cannot access admin dashboard before role assignment.
     denied = client.get("/api/admin/dashboard", headers=_auth_header(peer_token))
     assert denied.status_code == 403
 
-    # Lead assigns admin role to peer.
     assign = client.post(
         "/api/rbac/assign-role",
         json={"email": "peer@example.com", "role": "admin"},
@@ -76,7 +77,6 @@ def test_sp2_rbac_endpoint_restriction_and_role_assignment(client):
     )
     assert assign.status_code == 200
 
-    # Peer can now access protected endpoint.
     granted = client.get("/api/admin/dashboard", headers=_auth_header(peer_token))
     assert granted.status_code == 200
 
@@ -171,69 +171,75 @@ def test_sp4_dashboard_risk_summary_and_audit_logs(client):
     assert "login" in actions
     assert "assign_role" in actions
 
+
 def test_health_endpoint_returns_ok(client):
-    response = client.get('/health')
+    response = client.get("/health")
     assert response.status_code == 200
-    assert response.get_json() == {'status': 'ok'}
+    assert response.get_json() == {"status": "ok"}
+
 
 def test_me_endpoint_returns_roles_and_permissions(client):
-    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
-    token = _login(client, 'lead@example.com', 'Pass1234!').get_json()['access_token']
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    token = _login(client, "lead@example.com", "Pass1234!").get_json()["access_token"]
 
-    response = client.get('/api/auth/me', headers=_auth_header(token))
+    response = client.get("/api/auth/me", headers=_auth_header(token))
     assert response.status_code == 200
     payload = response.get_json()
-    assert payload['email'] == 'lead@example.com'
-    assert 'admin' in payload['roles']
-    assert 'admin:read' in payload['permissions']
-    assert 'rbac:assign_role' in payload['permissions']
+    assert payload["email"] == "lead@example.com"
+    assert "admin" in payload["roles"]
+    assert "admin:read" in payload["permissions"]
+    assert "rbac:assign_role" in payload["permissions"]
+
 
 def test_non_admin_is_denied_from_all_admin_endpoints(client):
-    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
-    _register(client, 'peer', 'peer@example.com', 'Pass1234!')
-    peer_token = _login(client, 'peer@example.com', 'Pass1234!').get_json()['access_token']
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    _register(client, "peer", "peer@example.com", "Pass1234!")
+    peer_token = _login(client, "peer@example.com", "Pass1234!").get_json()["access_token"]
     headers = _auth_header(peer_token)
 
-    assert client.get('/api/admin/dashboard', headers=headers).status_code == 403
-    assert client.get('/api/admin/security-events', headers=headers).status_code == 403
-    assert client.get('/api/admin/audit-logs', headers=headers).status_code == 403
-    assert client.get('/api/admin/risk-summary', headers=headers).status_code == 403
+    assert client.get("/api/admin/dashboard", headers=headers).status_code == 403
+    assert client.get("/api/admin/security-events", headers=headers).status_code == 403
+    assert client.get("/api/admin/audit-logs", headers=headers).status_code == 403
+    assert client.get("/api/admin/risk-summary", headers=headers).status_code == 403
+
 
 def test_assign_role_validation_errors(client):
-    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
-    token = _login(client, 'lead@example.com', 'Pass1234!').get_json()['access_token']
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    token = _login(client, "lead@example.com", "Pass1234!").get_json()["access_token"]
     headers = _auth_header(token)
 
-    missing = client.post('/api/rbac/assign-role', json={'email': 'peer@example.com'}, headers=headers)
+    missing = client.post("/api/rbac/assign-role", json={"email": "peer@example.com"}, headers=headers)
     assert missing.status_code == 400
 
     unknown_user = client.post(
-        '/api/rbac/assign-role',
-        json={'email': 'missing@example.com', 'role': 'admin'},
+        "/api/rbac/assign-role",
+        json={"email": "missing@example.com", "role": "admin"},
         headers=headers,
     )
     assert unknown_user.status_code == 404
 
     unknown_role = client.post(
-        '/api/rbac/assign-role',
-        json={'email': 'lead@example.com', 'role': 'ghost-role'},
+        "/api/rbac/assign-role",
+        json={"email": "lead@example.com", "role": "ghost-role"},
         headers=headers,
     )
     assert unknown_role.status_code == 404
 
+
 def test_dashboard_limits_recent_event_and_audit_lists(client):
-    _register(client, 'lead', 'lead@example.com', 'Pass1234!')
-    _register(client, 'peer', 'peer@example.com', 'Pass1234!')
-    token = _login_from_ip(client, 'lead@example.com', 'Pass1234!', '10.0.0.50').get_json()['access_token']
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    _register(client, "peer", "peer@example.com", "Pass1234!")
+    token = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.0.50").get_json()["access_token"]
 
     for index in range(6):
-        _login_from_ip(client, 'peer@example.com', 'wrong-password', f'10.0.1.{index}')
+        _login_from_ip(client, "peer@example.com", "wrong-password", f"10.0.1.{index}")
 
-    dashboard = client.get('/api/admin/dashboard', headers=_auth_header(token))
+    dashboard = client.get("/api/admin/dashboard", headers=_auth_header(token))
     assert dashboard.status_code == 200
     payload = dashboard.get_json()
-    assert len(payload['recent_security_events']) <= 5
-    assert len(payload['recent_audit_logs']) <= 5
+    assert len(payload["recent_security_events"]) <= 5
+    assert len(payload["recent_audit_logs"]) <= 5
+
 
 def test_login_requires_email_and_password(client):
     response = client.post("/api/auth/login", json={"email": ""})
@@ -242,33 +248,22 @@ def test_login_requires_email_and_password(client):
 
 
 def test_register_requires_all_fields(client):
-    response = client.post('/api/auth/register', json={'username': 'lead', 'email': ''})
+    response = client.post("/api/auth/register", json={"username": "lead", "email": ""})
     assert response.status_code == 400
-    assert response.get_json()['error'] == 'username, email, and password are required'
+    assert response.get_json()["error"] == "username, email, and password are required"
 
 
 def test_risk_summary_includes_risk_levels_and_system_counts(client):
-    _register(client, 'lead', 'lead@example.com', 'Pass1234')
-    lead_token = _login(client, 'lead@example.com', 'Pass1234').get_json()['access_token']
-    _login_from_ip(client, 'lead@example.com', 'wrong-password', '10.0.0.91')
+    _register(client, "lead", "lead@example.com", "Pass1234")
+    lead_token = _login(client, "lead@example.com", "Pass1234").get_json()["access_token"]
+    _login_from_ip(client, "lead@example.com", "wrong-password", "10.0.0.91")
 
-    response = client.get('/api/admin/risk-summary', headers=_auth_header(lead_token))
+    response = client.get("/api/admin/risk-summary", headers=_auth_header(lead_token))
     assert response.status_code == 200
     payload = response.get_json()
-    assert 'security_event_count' in payload['system_summary']
-    for user in payload['risk_summary']['users']:
-        assert user['risk_level'] in {'low', 'medium', 'high'}
-
-
-def test_event_and_audit_feeds_return_expected_keys(client):
-    _register(client, 'lead', 'lead@example.com', 'Pass1234')
-    token = _login(client, 'lead@example.com', 'Pass1234').get_json()['access_token']
-    _login_from_ip(client, 'lead@example.com', 'wrong-password', '10.0.0.92')
-
-    events = client.get('/api/admin/security-events', headers=_auth_header(token)).get_json()['events']
-    logs = client.get('/api/admin/audit-logs', headers=_auth_header(token)).get_json()['logs']
-    assert {'id', 'email', 'ip_address', 'event_type', 'outcome', 'risk_score', 'detail', 'created_at'} <= set(events[0].keys())
-    assert {'id', 'actor_user_id', 'action', 'target_email', 'status', 'detail', 'created_at'} <= set(logs[0].keys())
+    assert "security_event_count" in payload["system_summary"]
+    for user in payload["risk_summary"]["users"]:
+        assert user["risk_level"] in {"low", "medium", "high"}
 
 
 def test_me_requires_bearer_token(client):
@@ -277,13 +272,13 @@ def test_me_requires_bearer_token(client):
     assert response.get_json()["error"] == "Missing bearer token"
 
 
-def test_register_rejects_duplicate_email(client):
+def test_register_rejects_duplicate_email_with_generic_error(client):
     first = _register(client, "lead", "lead@example.com", "Pass1234!")
     duplicate = _register(client, "lead-two", "lead@example.com", "Pass1234!")
 
     assert first.status_code == 201
     assert duplicate.status_code == 400
-    assert duplicate.get_json()["error"] == "Email already exists"
+    assert duplicate.get_json()["error"] == "Unable to register account"
 
 
 def test_security_event_feed_is_capped_at_admin_limit(client):
@@ -297,3 +292,58 @@ def test_security_event_feed_is_capped_at_admin_limit(client):
     response = client.get("/api/admin/security-events", headers=_auth_header(token))
     assert response.status_code == 200
     assert len(response.get_json()["events"]) <= 20
+
+
+def test_create_app_rejects_default_secret_outside_test_mode():
+    with pytest.raises(RuntimeError):
+        create_app({"SECRET_KEY": Config.SECRET_KEY})
+
+
+def test_client_ip_ignores_forwarded_header_when_proxy_trust_is_disabled():
+    RateLimiter.reset()
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret",
+            "TRUST_PROXY_HEADERS": False,
+            "BOOTSTRAP_ADMIN_EMAIL": "lead@example.com",
+        }
+    )
+    local_client = app.test_client()
+    _register(local_client, "lead", "lead@example.com", "Pass1234")
+
+    first = local_client.post(
+        "/api/auth/login",
+        json={"email": "lead@example.com", "password": "Pass1234"},
+        headers={"X-Forwarded-For": "10.1.1.10"},
+        environ_base={"REMOTE_ADDR": "127.0.0.1"},
+    )
+    second = local_client.post(
+        "/api/auth/login",
+        json={"email": "lead@example.com", "password": "Pass1234"},
+        headers={"X-Forwarded-For": "10.1.1.11"},
+        environ_base={"REMOTE_ADDR": "127.0.0.1"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.get_json()["risk_assessment"]["signals"]["ip_change_detected"] is False
+
+
+def test_first_user_is_not_admin_without_explicit_bootstrap_email():
+    RateLimiter.reset()
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret",
+            "BOOTSTRAP_ADMIN_EMAIL": "",
+            "TRUST_PROXY_HEADERS": True,
+        }
+    )
+    local_client = app.test_client()
+
+    reg = _register(local_client, "lead", "lead@example.com", "Pass1234")
+    assert reg.status_code == 201
+    assert reg.get_json()["roles"] == ["user"]

@@ -36,9 +36,9 @@ class AuthenticationService:
         admin_role = Role.query.filter_by(name="admin").first()
         user_role = Role.query.filter_by(name="user").first()
 
-        # Bootstrap rule: first account becomes admin, others become user.
         total_users = User.query.count()
-        if total_users == 1 and admin_role:
+        bootstrap_admin_email = self.config.BOOTSTRAP_ADMIN_EMAIL
+        if total_users == 1 and admin_role and bootstrap_admin_email and email == bootstrap_admin_email:
             user.roles.append(admin_role)
         elif user_role:
             user.roles.append(user_role)
@@ -174,7 +174,6 @@ class AuthenticationService:
         }
         token = jwt.encode(payload, self.secret_key, algorithm="HS256")
 
-        # Store naive UTC in SQLite for predictable comparisons.
         session = SessionToken(
             jti=jti,
             user_id=user.id,
@@ -260,6 +259,7 @@ class AuthenticationService:
                 "JWT_EXPIRES_MINUTES",
                 "LOGIN_FAILURE_THRESHOLD",
                 "LOGIN_FAILURE_WINDOW_MINUTES",
+                "BOOTSTRAP_ADMIN_EMAIL",
             ):
                 setattr(config, key, current_app.config.get(key, getattr(config, key)))
         return config
