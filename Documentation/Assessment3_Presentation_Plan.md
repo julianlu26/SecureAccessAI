@@ -43,3 +43,18 @@ This document provides a concise presentation structure for the SecureAccessAI f
 - Slides 1 to 5: about 2 minutes 30 seconds
 - Slides 6 to 9: about 2 minutes
 - Slide 10 and Q and A handoff: about 30 seconds
+
+
+## Opening and Closing Lines
+
+### Suggested Opening
+- Hello everyone, we are presenting SecureAccessAI, our security-focused Flask prototype for authentication, authorization, and risk monitoring.
+
+### Suggested Closing
+- In summary, we delivered a working prototype, validated the main flows with tests, and documented the project for release and assessment submission.
+
+## Demo Checkpoints
+
+- Confirm the health endpoint before starting the walkthrough.
+- Show one authenticated user flow and one admin dashboard flow.
+- Mention the rules-based AI risk monitoring as a practical MVP.
