@@ -35,3 +35,9 @@ This checklist records the final integration checks completed before submission.
 - Confirm teammate-owned Sprint 4 documentation deliverables are merged.
 - Review Jira issue statuses one final time.
 - Capture any reflection notes required by the assessment rubric.
+
+## Demo Readiness
+
+- PASS Assessment 3 slide order has been drafted.
+- PASS Speaker split is documented for both team members.
+- PASS Demo Q and A notes are available for likely tutor questions.
