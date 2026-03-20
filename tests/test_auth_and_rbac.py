@@ -239,3 +239,8 @@ def test_login_requires_email_and_password(client):
     response = client.post("/api/auth/login", json={"email": ""})
     assert response.status_code == 400
     assert response.get_json()["error"] == "email and password are required"
+
+def test_register_requires_all_fields(client):
+    response = client.post(/api/auth/register, json={username: lead, email: })
+    assert response.status_code == 400
+    assert response.get_json()[error] == username, email, and password are required
