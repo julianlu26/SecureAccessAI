@@ -284,3 +284,16 @@ def test_register_rejects_duplicate_email(client):
     assert first.status_code == 201
     assert duplicate.status_code == 400
     assert duplicate.get_json()["error"] == "Email already exists"
+
+
+def test_security_event_feed_is_capped_at_admin_limit(client):
+    _register(client, "lead", "lead@example.com", "Pass1234")
+    _register(client, "peer", "peer@example.com", "Pass1234")
+    token = _login_from_ip(client, "lead@example.com", "Pass1234", "10.0.0.60").get_json()["access_token"]
+
+    for index in range(25):
+        _login_from_ip(client, "peer@example.com", "wrong-password", f"10.0.2.{index}")
+
+    response = client.get("/api/admin/security-events", headers=_auth_header(token))
+    assert response.status_code == 200
+    assert len(response.get_json()["events"]) <= 20
