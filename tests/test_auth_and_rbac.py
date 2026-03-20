@@ -269,3 +269,9 @@ def test_event_and_audit_feeds_return_expected_keys(client):
     logs = client.get('/api/admin/audit-logs', headers=_auth_header(token)).get_json()['logs']
     assert {'id', 'email', 'ip_address', 'event_type', 'outcome', 'risk_score', 'detail', 'created_at'} <= set(events[0].keys())
     assert {'id', 'actor_user_id', 'action', 'target_email', 'status', 'detail', 'created_at'} <= set(logs[0].keys())
+
+
+def test_me_requires_bearer_token(client):
+    response = client.get("/api/auth/me")
+    assert response.status_code == 401
+    assert response.get_json()["error"] == "Missing bearer token"
