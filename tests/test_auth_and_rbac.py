@@ -244,3 +244,15 @@ def test_register_requires_all_fields(client):
     response = client.post(/api/auth/register, json={username: lead, email: })
     assert response.status_code == 400
     assert response.get_json()[error] == username, email, and password are required
+
+def test_risk_summary_includes_risk_levels_and_system_counts(client):
+    _register(client, lead, lead@example.com, Pass1234!)
+    lead_token = _login(client, lead@example.com, Pass1234!).get_json()[access_token]
+    _login_from_ip(client, lead@example.com, wrong-password, 10.0.0.91)
+
+    response = client.get(/api/admin/risk-summary, headers=_auth_header(lead_token))
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert security_event_count in payload[system_summary]
+    for user in payload[risk_summary][users]:
+        assert user[risk_level] in {low, medium, high}
