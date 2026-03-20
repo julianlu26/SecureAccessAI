@@ -234,3 +234,8 @@ def test_dashboard_limits_recent_event_and_audit_lists(client):
     payload = dashboard.get_json()
     assert len(payload['recent_security_events']) <= 5
     assert len(payload['recent_audit_logs']) <= 5
+
+def test_login_requires_email_and_password(client):
+    response = client.post("/api/auth/login", json={"email": ""})
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "email and password are required"
