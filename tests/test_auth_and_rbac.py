@@ -275,3 +275,12 @@ def test_me_requires_bearer_token(client):
     response = client.get("/api/auth/me")
     assert response.status_code == 401
     assert response.get_json()["error"] == "Missing bearer token"
+
+
+def test_register_rejects_duplicate_email(client):
+    first = _register(client, "lead", "lead@example.com", "Pass1234!")
+    duplicate = _register(client, "lead-two", "lead@example.com", "Pass1234!")
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 400
+    assert duplicate.get_json()["error"] == "Email already exists"
