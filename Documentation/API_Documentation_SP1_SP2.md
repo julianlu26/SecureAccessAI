@@ -8,9 +8,11 @@ Base URL: `http://127.0.0.1:5000`
 No authentication required.
 
 Success 200:
+```json
 {
-  status: ok
+  "status": "ok"
 }
+```
 
 ### POST /api/auth/register
 Request body:
