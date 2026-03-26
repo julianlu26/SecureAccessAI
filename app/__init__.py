@@ -5,6 +5,7 @@ from app.extensions import db
 from app.routes.admin import admin_bp
 from app.routes.auth import auth_bp
 from app.routes.rbac import rbac_bp
+from app.routes.ui import ui_bp
 from app.services.authorization_service import seed_rbac
 
 INSECURE_SECRET_KEYS = {"dev-secret-change-me", "change-this-in-production", "test-secret"}
@@ -30,6 +31,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
     app.register_blueprint(rbac_bp)
+    app.register_blueprint(ui_bp)
 
     @app.get("/health")
     def health():

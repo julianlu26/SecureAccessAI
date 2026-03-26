@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SecureAccessAI Demo</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='demo.css') }}">
+  </head>
+  <body>
+    <main class="page">
+      <header class="hero">
+        <p class="eyebrow">SecureAccessAI</p>
+        <h1>Login Demo Page</h1>
+        <p class="intro">
+          This page is a simple UI for classroom demonstration. It uses the real backend APIs for
+          register, login, RBAC, risk monitoring, and admin views.
+        </p>
+      </header>
+
+      <section class="grid two-up">
+        <article class="card">
+          <h2>Register</h2>
+          <form id="register-form" class="stack">
+            <label>
+              Username
+              <input name="username" placeholder="lead" required>
+            </label>
+            <label>
+              Email
+              <input name="email" type="email" placeholder="lead@example.com" required>
+            </label>
+            <label>
+              Password
+              <input name="password" type="password" placeholder="Pass1234!" required>
+            </label>
+            <button type="submit">Register</button>
+          </form>
+        </article>
+
+        <article class="card">
+          <h2>Login</h2>
+          <form id="login-form" class="stack">
+            <label>
+              Email
+              <input name="email" type="email" placeholder="lead@example.com" required>
+            </label>
+            <label>
+              Password
+              <input name="password" type="password" placeholder="Pass1234!" required>
+            </label>
+            <button type="submit">Login</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="grid two-up">
+        <article class="card">
+          <h2>Current Session</h2>
+          <div class="stack compact">
+            <p><strong>Status:</strong> <span id="session-status">Logged out</span></p>
+            <p><strong>Token:</strong></p>
+            <pre id="token-preview">No token</pre>
+            <div class="button-row">
+              <button type="button" data-action="me">Load /me</button>
+              <button type="button" data-action="logout" class="secondary">Logout</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="card">
+          <h2>Admin Role Assignment</h2>
+          <form id="role-form" class="stack">
+            <label>
+              User Email
+              <input name="email" type="email" placeholder="peer@example.com" required>
+            </label>
+            <label>
+              Role
+              <input name="role" value="admin" required>
+            </label>
+            <button type="submit">Assign Role</button>
+          </form>
+        </article>
+      </section>
+
+      <section class="card">
+        <h2>Admin Demo Actions</h2>
+        <div class="button-row wrap">
+          <button type="button" data-action="dashboard">Dashboard</button>
+          <button type="button" data-action="security-events">Security Events</button>
+          <button type="button" data-action="audit-logs">Audit Logs</button>
+          <button type="button" data-action="risk-summary">Risk Summary</button>
+        </div>
+        <ol class="demo-steps">
+          <li>Register the first user with the bootstrap admin email if you want admin access.</li>
+          <li>Login and click <code>Load /me</code> to show the current roles and permissions.</li>
+          <li>Register a second user, then use <code>Assign Role</code> to promote them.</li>
+          <li>Open dashboard, security events, risk summary, and audit logs for the demo.</li>
+        </ol>
+      </section>
+
+      <section class="grid two-up results">
+        <article class="card">
+          <h2>Message</h2>
+          <pre id="message-box">Ready.</pre>
+        </article>
+        <article class="card">
+          <h2>API Response</h2>
+          <pre id="response-box">No response yet.</pre>
+        </article>
+      </section>
+    </main>
+    <script src="{{ url_for('static', filename='demo.js') }}"></script>
+  </body>
+</html>

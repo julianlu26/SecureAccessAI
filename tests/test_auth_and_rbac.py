@@ -347,3 +347,15 @@ def test_first_user_is_not_admin_without_explicit_bootstrap_email():
     reg = _register(local_client, "lead", "lead@example.com", "Pass1234")
     assert reg.status_code == 201
     assert reg.get_json()["roles"] == ["user"]
+
+
+def test_demo_ui_page_renders(client):
+    response = client.get("/")
+    assert response.status_code == 200
+    assert b"SecureAccessAI Demo" in response.data
+
+
+def test_demo_alias_page_renders(client):
+    response = client.get("/demo")
+    assert response.status_code == 200
+    assert b"Login Demo Page" in response.data

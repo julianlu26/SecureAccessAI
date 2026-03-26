@@ -1,0 +1,149 @@
+:root {
+  --bg: #f7f1e8;
+  --panel: #fffaf4;
+  --ink: #1d2733;
+  --muted: #6f7a84;
+  --accent: #b8572f;
+  --accent-soft: #e9b9a4;
+  --line: #dfd2c2;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Avenir Next", "Segoe UI", sans-serif;
+  background: radial-gradient(circle at top, #fff8ef 0%, var(--bg) 55%, #efe5d7 100%);
+  color: var(--ink);
+}
+
+.page {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 32px 20px 48px;
+}
+
+.hero {
+  margin-bottom: 20px;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
+h1, h2 {
+  margin: 0 0 12px;
+}
+
+.intro {
+  max-width: 760px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.two-up {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 16px 40px rgba(52, 35, 18, 0.08);
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+}
+
+.stack.compact {
+  gap: 10px;
+}
+
+label {
+  display: grid;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+input {
+  width: 100%;
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+}
+
+button {
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: white;
+  padding: 11px 16px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+button.secondary {
+  background: #4b5d73;
+}
+
+.button-row {
+  display: flex;
+  gap: 10px;
+}
+
+.button-row.wrap {
+  flex-wrap: wrap;
+}
+
+pre {
+  margin: 0;
+  padding: 14px;
+  border-radius: 14px;
+  background: #201a16;
+  color: #f5efe7;
+  overflow: auto;
+  min-height: 68px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.demo-steps {
+  margin: 16px 0 0 18px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+code {
+  background: #f3e6d8;
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+@media (max-width: 900px) {
+  .two-up {
+    grid-template-columns: 1fr;
+  }
+
+  .page {
+    padding: 20px 14px 36px;
+  }
+}

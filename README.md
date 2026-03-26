@@ -34,6 +34,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
+## Demo UI
+
+- `GET /` opens the browser demo page
+- `GET /demo` opens the same demo page
+- The page can register users, login, call `/me`, assign roles, and load admin endpoints
+
 ## API Summary
 
 - `GET /health`
