@@ -132,6 +132,16 @@ pre {
   line-height: 1.6;
 }
 
+.compact-list {
+  margin-top: 0;
+}
+
+.hint {
+  margin: 12px 0 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
 code {
   background: #f3e6d8;
   padding: 2px 6px;

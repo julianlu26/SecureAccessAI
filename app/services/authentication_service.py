@@ -1,4 +1,6 @@
 from datetime import UTC, datetime, timedelta
+import hashlib
+import secrets
 import uuid
 
 import jwt
@@ -6,7 +8,7 @@ from flask import current_app, has_app_context
 
 from app.config import Config
 from app.extensions import db
-from app.models import Role, SessionToken, User
+from app.models import LoginChallenge, Role, SessionToken, User
 from app.repositories.user_repository import UserRepository
 from app.services.audit_service import AuditLogger
 from app.services.security_service import build_security_components
@@ -53,7 +55,7 @@ class AuthenticationService:
         db.session.commit()
         return user
 
-    def login(self, email: str, password: str, ip_address: str) -> tuple[str, dict]:
+    def login(self, email: str, password: str, ip_address: str) -> dict:
         ip_monitor, rate_limiter, anomaly_detector, threat_engine = build_security_components()
 
         if not rate_limiter.allow(ip_address=ip_address, email=email):
@@ -162,52 +164,105 @@ class AuthenticationService:
         if not user.is_active:
             raise AuthenticationError("User is inactive")
 
-        now = datetime.now(UTC)
-        exp = now + timedelta(minutes=self.expires_minutes)
-        jti = uuid.uuid4().hex
+        risk_assessment = self._build_risk_assessment(user=user, email=email, ip_address=ip_address)
 
-        payload = {
-            "sub": user.id,
-            "jti": jti,
-            "iat": int(now.timestamp()),
-            "exp": int(exp.timestamp()),
-        }
-        token = jwt.encode(payload, self.secret_key, algorithm="HS256")
+        if self.config.MFA_ENABLED:
+            challenge, demo_code = self._create_login_challenge(user=user, email=email, ip_address=ip_address)
+            ip_monitor.log_event(
+                user=user,
+                email=email,
+                ip_address=ip_address,
+                event_type="login_mfa",
+                outcome="challenge",
+                risk_score=risk_assessment["score"],
+                detail="time-limited one-time code issued",
+            )
+            self.audit_logger.log(
+                actor_user=user,
+                action="login_challenge",
+                status="success",
+                target_email=email,
+                detail="time-limited verification code issued",
+            )
+            db.session.commit()
 
-        session = SessionToken(
-            jti=jti,
-            user_id=user.id,
-            issued_at=now.replace(tzinfo=None),
-            expires_at=exp.replace(tzinfo=None),
-            revoked=False,
-        )
-        db.session.add(session)
-        signals = anomaly_detector.detect(
-            user=user,
-            email=email,
-            ip_address=ip_address,
-            rate_limited=False,
-        )
-        risk_score, reasons = threat_engine.score(signals)
+            response = {
+                "mfa_required": True,
+                "challenge_id": challenge.challenge_id,
+                "expires_in_seconds": self.config.MFA_CODE_TTL_SECONDS,
+                "risk_assessment": risk_assessment,
+            }
+            if self.config.SHOW_DEMO_MFA_CODE or self.config.TESTING:
+                response["demo_code"] = demo_code
+            return response
+
+        token = self._issue_session_token(user)
         ip_monitor.log_event(
             user=user,
             email=email,
             ip_address=ip_address,
             event_type="login",
             outcome="success",
-            risk_score=risk_score,
-            detail=", ".join(reasons) if reasons else "low risk",
+            risk_score=risk_assessment["score"],
+            detail=", ".join(risk_assessment["reasons"]) if risk_assessment["reasons"] else "low risk",
         )
         self.audit_logger.log(
             actor_user=user,
             action="login",
             status="success",
             target_email=email,
-            detail=", ".join(reasons) if reasons else "low risk",
+            detail="password login completed",
         )
         db.session.commit()
+        return {"access_token": token, "risk_assessment": risk_assessment}
 
-        return token, {"score": risk_score, "signals": signals, "reasons": reasons}
+    def verify_code(self, challenge_id: str, code: str, ip_address: str) -> tuple[str, dict]:
+        challenge = LoginChallenge.query.filter_by(challenge_id=challenge_id).first()
+        if not challenge:
+            raise AuthenticationError("Invalid verification challenge")
+        if challenge.consumed:
+            raise AuthenticationError("Verification code already used")
+        if challenge.expires_at < datetime.now(UTC).replace(tzinfo=None):
+            challenge.consumed = True
+            db.session.commit()
+            raise AuthenticationError("Verification code expired")
+        if self.config.MFA_REQUIRE_SAME_IP and challenge.ip_address != ip_address:
+            raise AuthenticationError("Verification request must come from the same client")
+        if challenge.code_hash != self._hash_login_code(challenge.challenge_id, code):
+            self.audit_logger.log(
+                actor_user=challenge.user,
+                action="login_code",
+                status="failed",
+                target_email=challenge.email,
+                detail="invalid verification code",
+            )
+            db.session.commit()
+            raise AuthenticationError("Invalid verification code")
+
+        challenge.consumed = True
+        user = challenge.user
+        risk_assessment = self._build_risk_assessment(user=user, email=user.email, ip_address=ip_address)
+        token = self._issue_session_token(user)
+
+        ip_monitor, _, _, _ = build_security_components()
+        ip_monitor.log_event(
+            user=user,
+            email=user.email,
+            ip_address=ip_address,
+            event_type="login",
+            outcome="success",
+            risk_score=risk_assessment["score"],
+            detail="time-limited verification code accepted",
+        )
+        self.audit_logger.log(
+            actor_user=user,
+            action="login",
+            status="success",
+            target_email=user.email,
+            detail="time-limited verification code accepted",
+        )
+        db.session.commit()
+        return token, risk_assessment
 
     def logout(self, token: str) -> None:
         payload = jwt.decode(token, self.secret_key, algorithms=["HS256"])
@@ -250,16 +305,77 @@ class AuthenticationService:
 
         return user
 
+    def _build_risk_assessment(self, *, user: User | None, email: str, ip_address: str) -> dict:
+        _, _, anomaly_detector, threat_engine = build_security_components()
+        signals = anomaly_detector.detect(
+            user=user,
+            email=email,
+            ip_address=ip_address,
+            rate_limited=False,
+        )
+        risk_score, reasons = threat_engine.score(signals)
+        return {"score": risk_score, "signals": signals, "reasons": reasons}
+
+    def _create_login_challenge(self, *, user: User, email: str, ip_address: str) -> tuple[LoginChallenge, str]:
+        LoginChallenge.query.filter_by(user_id=user.id, consumed=False).update({"consumed": True})
+        code = f"{secrets.randbelow(1000000):06d}"
+        challenge_id = uuid.uuid4().hex
+        expires_at = datetime.now(UTC) + timedelta(seconds=self.config.MFA_CODE_TTL_SECONDS)
+        challenge = LoginChallenge(
+            challenge_id=challenge_id,
+            user_id=user.id,
+            email=email,
+            ip_address=ip_address,
+            code_hash=self._hash_login_code(challenge_id, code),
+            expires_at=expires_at.replace(tzinfo=None),
+            consumed=False,
+        )
+        db.session.add(challenge)
+        db.session.flush()
+        return challenge, code
+
+    def _issue_session_token(self, user: User) -> str:
+        now = datetime.now(UTC)
+        exp = now + timedelta(minutes=self.expires_minutes)
+        jti = uuid.uuid4().hex
+
+        payload = {
+            "sub": user.id,
+            "jti": jti,
+            "iat": int(now.timestamp()),
+            "exp": int(exp.timestamp()),
+        }
+        token = jwt.encode(payload, self.secret_key, algorithm="HS256")
+
+        session = SessionToken(
+            jti=jti,
+            user_id=user.id,
+            issued_at=now.replace(tzinfo=None),
+            expires_at=exp.replace(tzinfo=None),
+            revoked=False,
+        )
+        db.session.add(session)
+        return token
+
+    def _hash_login_code(self, challenge_id: str, code: str) -> str:
+        raw = f"{challenge_id}:{code}:{self.secret_key}".encode("utf-8")
+        return hashlib.sha256(raw).hexdigest()
+
     @property
     def config(self) -> Config:
         config = Config()
         if has_app_context():
             for key in (
+                "TESTING",
                 "SECRET_KEY",
                 "JWT_EXPIRES_MINUTES",
                 "LOGIN_FAILURE_THRESHOLD",
                 "LOGIN_FAILURE_WINDOW_MINUTES",
                 "BOOTSTRAP_ADMIN_EMAIL",
+                "MFA_ENABLED",
+                "MFA_CODE_TTL_SECONDS",
+                "MFA_REQUIRE_SAME_IP",
+                "SHOW_DEMO_MFA_CODE",
             ):
                 setattr(config, key, current_app.config.get(key, getattr(config, key)))
         return config

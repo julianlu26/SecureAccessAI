@@ -31,12 +31,14 @@ def register():
         return jsonify({"error": "Unable to register account"}), 400
 
     return (
-        jsonify({
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "roles": [role.name for role in user.roles],
-        }),
+        jsonify(
+            {
+                "id": user.id,
+                "username": user.username,
+                "email": user.email,
+                "roles": [role.name for role in user.roles],
+            }
+        ),
         201,
     )
 
@@ -51,9 +53,30 @@ def login():
         return jsonify({"error": "email and password are required"}), 400
 
     try:
-        token, risk_assessment = build_auth_service().login(
+        result = build_auth_service().login(
             email=email,
             password=password,
+            ip_address=_client_ip(),
+        )
+    except AuthenticationError as exc:
+        return jsonify({"error": str(exc), "risk_assessment": exc.risk_assessment}), exc.status_code
+
+    return jsonify(result)
+
+
+@auth_bp.post("/verify-code")
+def verify_code():
+    payload = request.get_json(silent=True) or {}
+    challenge_id = payload.get("challenge_id", "").strip()
+    code = payload.get("code", "").strip()
+
+    if not challenge_id or not code:
+        return jsonify({"error": "challenge_id and code are required"}), 400
+
+    try:
+        token, risk_assessment = build_auth_service().verify_code(
+            challenge_id=challenge_id,
+            code=code,
             ip_address=_client_ip(),
         )
     except AuthenticationError as exc:

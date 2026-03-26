@@ -14,6 +14,11 @@ class Config:
     RISK_IP_LOOKBACK_HOURS = int(os.getenv("RISK_IP_LOOKBACK_HOURS", "24"))
     TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+    MFA_ENABLED = os.getenv("MFA_ENABLED", "true").lower() == "true"
+    MFA_CODE_TTL_SECONDS = int(os.getenv("MFA_CODE_TTL_SECONDS", "300"))
+    MFA_REQUIRE_SAME_IP = os.getenv("MFA_REQUIRE_SAME_IP", "true").lower() == "true"
+    SHOW_DEMO_MFA_CODE = os.getenv("SHOW_DEMO_MFA_CODE", "false").lower() == "true"
+    ADMIN_SHOW_FULL_PII = os.getenv("ADMIN_SHOW_FULL_PII", "false").lower() == "true"
 
     SECURITY_TUNABLE_KEYS = (
         "JWT_EXPIRES_MINUTES",
@@ -23,6 +28,11 @@ class Config:
         "LOGIN_FAILURE_WINDOW_MINUTES",
         "RISK_IP_LOOKBACK_HOURS",
         "TRUST_PROXY_HEADERS",
+        "MFA_ENABLED",
+        "MFA_CODE_TTL_SECONDS",
+        "MFA_REQUIRE_SAME_IP",
+        "SHOW_DEMO_MFA_CODE",
+        "ADMIN_SHOW_FULL_PII",
     )
 
     @classmethod

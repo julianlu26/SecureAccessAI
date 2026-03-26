@@ -13,7 +13,7 @@
         <h1>Login Demo Page</h1>
         <p class="intro">
           This page is a simple UI for classroom demonstration. It uses the real backend APIs for
-          register, login, RBAC, risk monitoring, and admin views.
+          register, login, one-time code verification, RBAC, risk monitoring, and admin views.
         </p>
       </header>
 
@@ -48,12 +48,28 @@
               Password
               <input name="password" type="password" placeholder="Pass1234!" required>
             </label>
-            <button type="submit">Login</button>
+            <button type="submit">Request Login Code</button>
           </form>
         </article>
       </section>
 
       <section class="grid two-up">
+        <article class="card">
+          <h2>Verify Time-Limited Code</h2>
+          <form id="verify-form" class="stack">
+            <label>
+              Challenge ID
+              <input id="challenge-id" name="challenge_id" placeholder="Auto-filled after login" required>
+            </label>
+            <label>
+              Code
+              <input name="code" placeholder="6-digit code" required>
+            </label>
+            <button type="submit">Verify Code</button>
+          </form>
+          <p class="hint">For classroom demo, the code can be returned in the API response when demo mode is enabled.</p>
+        </article>
+
         <article class="card">
           <h2>Current Session</h2>
           <div class="stack compact">
@@ -66,7 +82,9 @@
             </div>
           </div>
         </article>
+      </section>
 
+      <section class="grid two-up">
         <article class="card">
           <h2>Admin Role Assignment</h2>
           <form id="role-form" class="stack">
@@ -81,6 +99,15 @@
             <button type="submit">Assign Role</button>
           </form>
         </article>
+
+        <article class="card">
+          <h2>Data Governance</h2>
+          <ul class="demo-steps compact-list">
+            <li>Login now uses a time-limited random code before the session token is issued.</li>
+            <li>Admin feeds mask personal identifiers by default.</li>
+            <li>The goal is least-necessary access to personal data during monitoring and review.</li>
+          </ul>
+        </article>
       </section>
 
       <section class="card">
@@ -93,8 +120,8 @@
         </div>
         <ol class="demo-steps">
           <li>Register the first user with the bootstrap admin email if you want admin access.</li>
-          <li>Login and click <code>Load /me</code> to show the current roles and permissions.</li>
-          <li>Register a second user, then use <code>Assign Role</code> to promote them.</li>
+          <li>Login to receive the challenge and one-time code.</li>
+          <li>Verify the code, then click <code>Load /me</code> to show roles and permissions.</li>
           <li>Open dashboard, security events, risk summary, and audit logs for the demo.</li>
         </ol>
       </section>

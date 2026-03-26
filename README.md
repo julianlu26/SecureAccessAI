@@ -38,13 +38,14 @@ docker compose up --build
 
 - `GET /` opens the browser demo page
 - `GET /demo` opens the same demo page
-- The page can register users, login, call `/me`, assign roles, and load admin endpoints
+- The page can register users, request a time-limited login code, verify that code, call `/me`, assign roles, and load admin endpoints
 
 ## API Summary
 
 - `GET /health`
 - `POST /api/auth/register`
 - `POST /api/auth/login`
+- `POST /api/auth/verify-code`
 - `POST /api/auth/logout` (Bearer token required)
 - `GET /api/auth/me` (Bearer token required)
 - `GET /api/admin/dashboard` (requires `admin:read` permission)
@@ -56,6 +57,8 @@ docker compose up --build
 ## Security Configuration Notes
 
 - The application will refuse to start with a default `SECRET_KEY` outside test mode.
+- Login can require a time-limited one-time verification code before a session token is issued.
+- Admin feeds mask personal identifiers by default to reduce unnecessary data exposure.
 - `TRUST_PROXY_HEADERS=true` should only be enabled behind a trusted proxy or gateway.
 - `BOOTSTRAP_ADMIN_EMAIL` can be used to explicitly define which first account receives the admin role.
 

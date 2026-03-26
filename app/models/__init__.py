@@ -74,6 +74,24 @@ class SessionToken(db.Model):
     user = db.relationship("User", back_populates="sessions")
 
 
+class LoginChallenge(db.Model):
+    __tablename__ = "login_challenges"
+
+    id = db.Column(db.Integer, primary_key=True)
+    challenge_id = db.Column(db.String(64), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    email = db.Column(db.String(120), nullable=False)
+    ip_address = db.Column(db.String(64), nullable=False)
+    code_hash = db.Column(db.String(64), nullable=False)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    consumed = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), nullable=False
+    )
+
+    user = db.relationship("User", backref="login_challenges")
+
+
 class SecurityEvent(db.Model):
     __tablename__ = "security_events"
 

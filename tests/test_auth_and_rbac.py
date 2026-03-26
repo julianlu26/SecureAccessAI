@@ -21,6 +21,11 @@ def client():
             "RISK_IP_LOOKBACK_HOURS": 24,
             "TRUST_PROXY_HEADERS": True,
             "BOOTSTRAP_ADMIN_EMAIL": "lead@example.com",
+            "MFA_ENABLED": True,
+            "MFA_CODE_TTL_SECONDS": 300,
+            "MFA_REQUIRE_SAME_IP": True,
+            "SHOW_DEMO_MFA_CODE": True,
+            "ADMIN_SHOW_FULL_PII": False,
         }
     )
     return app.test_client()
@@ -33,16 +38,42 @@ def _register(client, username, email, password):
     )
 
 
-def _login(client, email, password):
-    return client.post("/api/auth/login", json={"email": email, "password": password})
-
-
-def _login_from_ip(client, email, password, ip_address):
+def _start_login(client, email, password, ip_address=None):
+    kwargs = {}
+    if ip_address:
+        kwargs["headers"] = {"X-Forwarded-For": ip_address}
     return client.post(
         "/api/auth/login",
         json={"email": email, "password": password},
-        headers={"X-Forwarded-For": ip_address},
+        **kwargs,
     )
+
+
+def _verify_code(client, challenge_id, code, ip_address=None):
+    kwargs = {}
+    if ip_address:
+        kwargs["headers"] = {"X-Forwarded-For": ip_address}
+    return client.post(
+        "/api/auth/verify-code",
+        json={"challenge_id": challenge_id, "code": code},
+        **kwargs,
+    )
+
+
+def _login(client, email, password):
+    first = _start_login(client, email, password)
+    payload = first.get_json() or {}
+    if first.status_code != 200 or not payload.get("mfa_required"):
+        return first
+    return _verify_code(client, payload["challenge_id"], payload["demo_code"])
+
+
+def _login_from_ip(client, email, password, ip_address):
+    first = _start_login(client, email, password, ip_address=ip_address)
+    payload = first.get_json() or {}
+    if first.status_code != 200 or not payload.get("mfa_required"):
+        return first
+    return _verify_code(client, payload["challenge_id"], payload["demo_code"], ip_address=ip_address)
 
 
 def _auth_header(token):
@@ -54,7 +85,17 @@ def test_sp1_register_and_login(client):
     assert reg.status_code == 201
     assert "admin" in reg.get_json()["roles"]
 
-    login = _login(client, "lead@example.com", "Pass1234!")
+    challenge = _start_login(client, "lead@example.com", "Pass1234!")
+    assert challenge.status_code == 200
+    challenge_payload = challenge.get_json()
+    assert challenge_payload["mfa_required"] is True
+    assert len(challenge_payload["demo_code"]) == 6
+
+    login = _verify_code(
+        client,
+        challenge_payload["challenge_id"],
+        challenge_payload["demo_code"],
+    )
     assert login.status_code == 200
     assert "access_token" in login.get_json()
     assert login.get_json()["risk_assessment"]["score"] == 0
@@ -95,9 +136,9 @@ def test_logout_revokes_session_token(client):
 def test_sp3_failure_threshold_blocks_repeated_failed_logins(client):
     _register(client, "lead", "lead@example.com", "Pass1234!")
 
-    first = _login_from_ip(client, "lead@example.com", "wrong-password", "10.0.0.10")
-    second = _login_from_ip(client, "lead@example.com", "wrong-password", "10.0.0.10")
-    third = _login_from_ip(client, "lead@example.com", "wrong-password", "10.0.0.10")
+    first = _start_login(client, "lead@example.com", "wrong-password", ip_address="10.0.0.10")
+    second = _start_login(client, "lead@example.com", "wrong-password", ip_address="10.0.0.10")
+    third = _start_login(client, "lead@example.com", "wrong-password", ip_address="10.0.0.10")
 
     assert first.status_code == 401
     assert second.status_code == 401
@@ -110,10 +151,10 @@ def test_sp3_rate_limiter_returns_429(client):
     _register(client, "lead", "lead@example.com", "Pass1234!")
 
     for _ in range(5):
-        response = _login_from_ip(client, "lead@example.com", "wrong-password", "10.0.0.20")
+        response = _start_login(client, "lead@example.com", "wrong-password", ip_address="10.0.0.20")
         assert response.status_code in (401, 403)
 
-    blocked = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.0.20")
+    blocked = _start_login(client, "lead@example.com", "Pass1234!", ip_address="10.0.0.20")
     assert blocked.status_code == 429
     assert blocked.get_json()["risk_assessment"]["signals"]["rate_limited"] is True
 
@@ -142,9 +183,9 @@ def test_sp4_dashboard_risk_summary_and_audit_logs(client):
     lead_login = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.0.40")
     lead_token = lead_login.get_json()["access_token"]
 
-    _login_from_ip(client, "peer@example.com", "wrong-password", "10.0.0.41")
-    _login_from_ip(client, "peer@example.com", "wrong-password", "10.0.0.41")
-    _login_from_ip(client, "peer@example.com", "wrong-password", "10.0.0.41")
+    _start_login(client, "peer@example.com", "wrong-password", ip_address="10.0.0.41")
+    _start_login(client, "peer@example.com", "wrong-password", ip_address="10.0.0.41")
+    _start_login(client, "peer@example.com", "wrong-password", ip_address="10.0.0.41")
 
     assign = client.post(
         "/api/rbac/assign-role",
@@ -159,11 +200,12 @@ def test_sp4_dashboard_risk_summary_and_audit_logs(client):
     assert dashboard_json["system_summary"]["security_event_count"] >= 4
     assert dashboard_json["system_summary"]["audit_log_count"] >= 4
     assert len(dashboard_json["recent_audit_logs"]) >= 1
+    assert dashboard_json["data_governance"]["pii_mode"] == "masked"
 
     risk_summary = client.get("/api/admin/risk-summary", headers=_auth_header(lead_token))
     assert risk_summary.status_code == 200
     users = risk_summary.get_json()["risk_summary"]["users"]
-    assert any(user["email"] == "peer@example.com" for user in users)
+    assert any("***" in user["email"] for user in users)
 
     audit_logs = client.get("/api/admin/audit-logs", headers=_auth_header(lead_token))
     assert audit_logs.status_code == 200
@@ -232,7 +274,7 @@ def test_dashboard_limits_recent_event_and_audit_lists(client):
     token = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.0.50").get_json()["access_token"]
 
     for index in range(6):
-        _login_from_ip(client, "peer@example.com", "wrong-password", f"10.0.1.{index}")
+        _start_login(client, "peer@example.com", "wrong-password", ip_address=f"10.0.1.{index}")
 
     dashboard = client.get("/api/admin/dashboard", headers=_auth_header(token))
     assert dashboard.status_code == 200
@@ -256,7 +298,7 @@ def test_register_requires_all_fields(client):
 def test_risk_summary_includes_risk_levels_and_system_counts(client):
     _register(client, "lead", "lead@example.com", "Pass1234")
     lead_token = _login(client, "lead@example.com", "Pass1234").get_json()["access_token"]
-    _login_from_ip(client, "lead@example.com", "wrong-password", "10.0.0.91")
+    _start_login(client, "lead@example.com", "wrong-password", ip_address="10.0.0.91")
 
     response = client.get("/api/admin/risk-summary", headers=_auth_header(lead_token))
     assert response.status_code == 200
@@ -287,11 +329,12 @@ def test_security_event_feed_is_capped_at_admin_limit(client):
     token = _login_from_ip(client, "lead@example.com", "Pass1234", "10.0.0.60").get_json()["access_token"]
 
     for index in range(25):
-        _login_from_ip(client, "peer@example.com", "wrong-password", f"10.0.2.{index}")
+        _start_login(client, "peer@example.com", "wrong-password", ip_address=f"10.0.2.{index}")
 
     response = client.get("/api/admin/security-events", headers=_auth_header(token))
     assert response.status_code == 200
     assert len(response.get_json()["events"]) <= 20
+    assert all("***" in event["email"] for event in response.get_json()["events"])
 
 
 def test_create_app_rejects_default_secret_outside_test_mode():
@@ -308,17 +351,14 @@ def test_client_ip_ignores_forwarded_header_when_proxy_trust_is_disabled():
             "SECRET_KEY": "test-secret",
             "TRUST_PROXY_HEADERS": False,
             "BOOTSTRAP_ADMIN_EMAIL": "lead@example.com",
+            "MFA_ENABLED": True,
+            "SHOW_DEMO_MFA_CODE": True,
         }
     )
     local_client = app.test_client()
     _register(local_client, "lead", "lead@example.com", "Pass1234")
 
-    first = local_client.post(
-        "/api/auth/login",
-        json={"email": "lead@example.com", "password": "Pass1234"},
-        headers={"X-Forwarded-For": "10.1.1.10"},
-        environ_base={"REMOTE_ADDR": "127.0.0.1"},
-    )
+    first = _login_from_ip(local_client, "lead@example.com", "Pass1234", "127.0.0.1")
     second = local_client.post(
         "/api/auth/login",
         json={"email": "lead@example.com", "password": "Pass1234"},
@@ -340,6 +380,8 @@ def test_first_user_is_not_admin_without_explicit_bootstrap_email():
             "SECRET_KEY": "test-secret",
             "BOOTSTRAP_ADMIN_EMAIL": "",
             "TRUST_PROXY_HEADERS": True,
+            "MFA_ENABLED": True,
+            "SHOW_DEMO_MFA_CODE": True,
         }
     )
     local_client = app.test_client()
@@ -349,10 +391,35 @@ def test_first_user_is_not_admin_without_explicit_bootstrap_email():
     assert reg.get_json()["roles"] == ["user"]
 
 
+def test_login_requires_valid_one_time_code(client):
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    challenge = _start_login(client, "lead@example.com", "Pass1234!")
+    payload = challenge.get_json()
+
+    bad = _verify_code(client, payload["challenge_id"], "000000")
+    assert bad.status_code == 401
+    assert bad.get_json()["error"] == "Invalid verification code"
+
+
+
+def test_admin_responses_mask_personal_data_by_default(client):
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    token = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.0.70").get_json()["access_token"]
+    _start_login(client, "lead@example.com", "wrong-password", ip_address="10.0.0.71")
+
+    events = client.get("/api/admin/security-events", headers=_auth_header(token))
+    assert events.status_code == 200
+    payload = events.get_json()
+    assert payload["data_governance"]["pii_mode"] == "masked"
+    assert any("***" in event["email"] for event in payload["events"])
+    assert any("***" in event["ip_address"] for event in payload["events"])
+
+
 def test_demo_ui_page_renders(client):
     response = client.get("/")
     assert response.status_code == 200
     assert b"SecureAccessAI Demo" in response.data
+    assert b"Verify Time-Limited Code" in response.data
 
 
 def test_demo_alias_page_renders(client):
