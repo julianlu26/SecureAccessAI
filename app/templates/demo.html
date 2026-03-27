@@ -4,6 +4,9 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SecureAccessAI Demo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='demo.css') }}">
   </head>
   <body data-page-mode="{{ page_mode }}" data-demo-admin-email="{{ demo_admin_email }}" data-demo-admin-password="{{ demo_admin_password }}" data-demo-admin-username="{{ demo_admin_username }}">
@@ -80,6 +83,14 @@
             <span class="tab active">Resources</span>
             <span class="tab">Activity</span>
             <span class="tab">Settings</span>
+          </div>
+        </section>
+
+        <section class="resource-alert card-shell">
+          <div class="resource-alert-icon">i</div>
+          <div>
+            <p class="resource-alert-title">Application security resources</p>
+            <p class="resource-alert-copy">Use this workspace to authenticate, verify, monitor, and manage security operations. Network security can be added as a follow-on module.</p>
           </div>
         </section>
 
