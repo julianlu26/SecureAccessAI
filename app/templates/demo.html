@@ -7,225 +7,417 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='demo.css') }}">
   </head>
   <body data-page-mode="{{ page_mode }}" data-demo-admin-email="{{ demo_admin_email }}" data-demo-admin-password="{{ demo_admin_password }}" data-demo-admin-username="{{ demo_admin_username }}">
-    <main class="page">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">SecureAccessAI</p>
-          <h1>Secure Access Demo</h1>
-          <p class="intro">
-            This page now works like a simple dashboard flow. You sign in with the real backend APIs,
-            then move into a dashboard view for user management, risk monitoring, audit logs, and admin actions.
-          </p>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-brand">
+          <div class="brand-mark">SA</div>
+          <div>
+            <p class="sidebar-eyebrow">Platform</p>
+            <h2>SecureAccessAI</h2>
+            <p class="sidebar-copy">Application security workspace with room for future network security controls.</p>
+          </div>
         </div>
-        <div class="hero-chip" id="global-status-chip">Ready for demo</div>
-      </header>
 
-      <section id="auth-shell" class="stack-shell">
-        <section class="grid two-up">
-          <article class="card">
-            <h2>Register</h2>
-            <form id="register-form" class="stack">
-              <label>
-                Username
-                <input name="username" placeholder="lead" required>
-              </label>
-              <label>
-                Email
-                <input name="email" type="email" placeholder="lead@example.com" required>
-              </label>
-              <label>
-                Password
-                <input name="password" type="password" placeholder="Pass1234!" required>
-              </label>
-              <button type="submit">Register</button>
-            </form>
-          </article>
+        <nav class="sidebar-nav" aria-label="Primary">
+          <button type="button" class="nav-item active">Overview</button>
+          <button type="button" class="nav-item">Identity</button>
+          <button type="button" class="nav-item">Threats</button>
+          <button type="button" class="nav-item">Audit</button>
+          <button type="button" class="nav-item">Governance</button>
+        </nav>
 
-          <article class="card">
-            <h2>Login</h2>
-            <form id="login-form" class="stack">
-              <label>
-                Email
-                <input name="email" type="email" placeholder="lead@example.com" required>
-              </label>
-              <label>
-                Password
-                <input name="password" type="password" placeholder="Pass1234!" required>
-              </label>
-              <button type="submit">Request Login Code</button>
-            </form>
-          </article>
+        <section class="sidebar-module">
+          <p class="sidebar-eyebrow">Next module</p>
+          <h3>Network Security Extension</h3>
+          <ul>
+            <li>Traffic anomaly detection</li>
+            <li>Asset and port visibility</li>
+            <li>Vulnerability feed integration</li>
+            <li>Incident response hooks</li>
+          </ul>
+        </section>
+      </aside>
+
+      <div class="workspace">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Application Security Platform</p>
+            <h1>Secure Access Demo</h1>
+          </div>
+          <div class="topbar-actions">
+            <div class="tenant-badge">Kale Health Demo Tenant</div>
+            <div class="status-pill" id="global-status-chip">Ready for demo</div>
+            <div class="avatar">SA</div>
+          </div>
+        </header>
+
+        <section class="welcome-strip card-shell">
+          <div>
+            <p class="eyebrow">Control Center</p>
+            <h2>Welcome, Analyst</h2>
+            <p class="intro">
+              Use the same backend APIs to register users, request time-limited login codes, verify access,
+              review audit activity, and manage role-based security operations.
+            </p>
+          </div>
+          <div class="tab-row" aria-hidden="true">
+            <span class="tab active">Dashboard</span>
+            <span class="tab">Tasks</span>
+            <span class="tab">Evidence</span>
+          </div>
         </section>
 
-        <section class="grid two-up">
-          <article class="card">
-            <h2>Verify Time-Limited Code</h2>
-            <form id="verify-form" class="stack">
-              <label>
-                Challenge ID
-                <input id="challenge-id" name="challenge_id" placeholder="Auto-filled after login" required>
-              </label>
-              <label>
-                Code
-                <input name="code" placeholder="6-digit code" required>
-              </label>
-              <button type="submit">Verify Code</button>
-            </form>
-            <div class="stack compact auth-feedback">
-              <p class="hint"><strong>Latest Demo Code</strong></p>
-              <pre id="demo-code-box">No code issued yet.</pre>
-            </div>
-            <p class="hint">For classroom demo, the code can be returned in the API response when demo mode is enabled.</p>
-          </article>
-
-          <article class="card">
-            <h2>Quick Demo Login</h2>
-            {% if demo_admin_email and demo_admin_password %}
-            <div class="stack compact">
-              <p>Use the seeded demo admin account for classroom testing.</p>
-              <p><strong>Username:</strong> <code>{{ demo_admin_username }}</code></p>
-              <p><strong>Email:</strong> <code id="demo-admin-email">{{ demo_admin_email }}</code></p>
-              <p><strong>Password:</strong> <code id="demo-admin-password">{{ demo_admin_password }}</code></p>
-              <div class="button-row wrap">
-                <button type="button" id="fill-demo-login">Use Demo Admin</button>
-                <button type="button" id="request-demo-login" class="secondary">Request Demo Login Code</button>
+        <section id="auth-shell" class="auth-shell">
+          <div class="auth-layout">
+            <article class="card-shell auth-card auth-card--wide">
+              <div class="section-heading">
+                <div>
+                  <p class="eyebrow">Access Setup</p>
+                  <h2>Register or sign in</h2>
+                </div>
+                <p class="section-copy">This environment uses password sign-in followed by a time-limited verification code.</p>
               </div>
-            </div>
-            {% else %}
-            <p class="hint">Set <code>DEMO_ADMIN_EMAIL</code> and <code>DEMO_ADMIN_PASSWORD</code> to enable one-click demo login.</p>
-            {% endif %}
-          </article>
+
+              <div class="auth-grid">
+                <form id="register-form" class="stack panel inset-panel">
+                  <div>
+                    <p class="panel-label">Register</p>
+                    <h3>Create operator account</h3>
+                  </div>
+                  <label>
+                    Username
+                    <input name="username" placeholder="lead" required>
+                  </label>
+                  <label>
+                    Email
+                    <input name="email" type="email" placeholder="lead@example.com" required>
+                  </label>
+                  <label>
+                    Password
+                    <input name="password" type="password" placeholder="Pass1234!" required>
+                  </label>
+                  <button type="submit">Register</button>
+                </form>
+
+                <form id="login-form" class="stack panel inset-panel">
+                  <div>
+                    <p class="panel-label">Login</p>
+                    <h3>Request login code</h3>
+                  </div>
+                  <label>
+                    Email
+                    <input name="email" type="email" placeholder="lead@example.com" required>
+                  </label>
+                  <label>
+                    Password
+                    <input name="password" type="password" placeholder="Pass1234!" required>
+                  </label>
+                  <button type="submit">Request Login Code</button>
+                </form>
+              </div>
+            </article>
+
+            <article class="card-shell auth-card auth-card--stacked">
+              <div class="stack card-stack-gap">
+                <div class="panel inset-panel">
+                  <div class="section-heading compact">
+                    <div>
+                      <p class="eyebrow">Verification</p>
+                      <h2>Verify Time-Limited Code</h2>
+                    </div>
+                  </div>
+                  <form id="verify-form" class="stack">
+                    <label>
+                      Challenge ID
+                      <input id="challenge-id" name="challenge_id" placeholder="Auto-filled after login" required>
+                    </label>
+                    <label>
+                      Code
+                      <input name="code" placeholder="6-digit code" required>
+                    </label>
+                    <button type="submit">Verify Code</button>
+                  </form>
+                  <div class="demo-code-panel">
+                    <p class="panel-label">Latest Demo Code</p>
+                    <pre id="demo-code-box">No code issued yet.</pre>
+                  </div>
+                  <p class="hint">When demo mode is enabled, the latest code is surfaced here so classroom verification is immediate.</p>
+                </div>
+
+                <div class="panel inset-panel quick-login-panel">
+                  <div class="section-heading compact">
+                    <div>
+                      <p class="eyebrow">Fast path</p>
+                      <h2>Quick Demo Login</h2>
+                    </div>
+                  </div>
+                  {% if demo_admin_email and demo_admin_password %}
+                  <p class="section-copy">Seeded admin account for classroom testing.</p>
+                  <div class="credential-list">
+                    <p><span>Username</span><code>{{ demo_admin_username }}</code></p>
+                    <p><span>Email</span><code id="demo-admin-email">{{ demo_admin_email }}</code></p>
+                    <p><span>Password</span><code id="demo-admin-password">{{ demo_admin_password }}</code></p>
+                  </div>
+                  <div class="button-row wrap">
+                    <button type="button" id="fill-demo-login">Use Demo Admin</button>
+                    <button type="button" id="request-demo-login" class="secondary">Request Demo Login Code</button>
+                  </div>
+                  {% else %}
+                  <p class="hint">Set <code>DEMO_ADMIN_EMAIL</code> and <code>DEMO_ADMIN_PASSWORD</code> to enable one-click demo login.</p>
+                  {% endif %}
+                </div>
+              </div>
+            </article>
+          </div>
         </section>
-      </section>
 
-      <section id="dashboard-shell" class="dashboard-shell hidden">
-        <section class="dashboard-top">
-          <article class="card dashboard-hero">
-            <p class="eyebrow">After Login</p>
-            <h2>Security Dashboard</h2>
-            <p class="hint">This is the main demo area. After verification, the dashboard loads admin controls, monitoring data, and user management in one place.</p>
-            <div class="button-row wrap">
-              <button type="button" data-action="me">Refresh My Access</button>
-              <button type="button" data-action="dashboard">Refresh Dashboard</button>
-              <button type="button" data-action="switch-account">Switch Account</button>
-              <button type="button" data-action="logout" class="secondary">Logout</button>
-            </div>
-          </article>
+        <section id="dashboard-shell" class="dashboard-shell hidden">
+          <section class="hero-grid">
+            <article class="card-shell hero-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">After Login</p>
+                  <h2>Security Dashboard Overview</h2>
+                </div>
+                <div class="button-row wrap">
+                  <button type="button" data-action="me">Refresh My Access</button>
+                  <button type="button" data-action="dashboard">Refresh Dashboard</button>
+                  <button type="button" data-action="switch-account">Switch Account</button>
+                  <button type="button" data-action="logout" class="secondary">Logout</button>
+                </div>
+              </div>
+              <p class="section-copy">This demo shows the application security layer today, with a reserved path to extend into network visibility and incident response workflows later.</p>
 
-          <article class="card">
-            <h2>Current Session</h2>
-            <div class="stack compact">
-              <p><strong>Status:</strong> <span id="session-status">Logged out</span></p>
-              <p><strong>User:</strong></p>
-              <pre id="current-user-box">No user loaded.</pre>
-              <p><strong>Token:</strong></p>
-              <pre id="token-preview">No token</pre>
-            </div>
-          </article>
-        </section>
+              <div class="framework-grid compact-grid">
+                <div class="panel metric-panel emphasis-panel">
+                  <p class="panel-label">Security posture</p>
+                  <div class="gauge" id="overview-gauge">
+                    <div class="gauge-inner">
+                      <strong id="overview-gauge-value">0%</strong>
+                      <span>Protected</span>
+                    </div>
+                  </div>
+                </div>
 
-        <section class="stats-grid">
-          <article class="card stat-card">
-            <p class="stat-label">Users</p>
-            <p class="stat-value" id="metric-user-count">0</p>
-          </article>
-          <article class="card stat-card">
-            <p class="stat-label">Security Events</p>
-            <p class="stat-value" id="metric-security-event-count">0</p>
-          </article>
-          <article class="card stat-card">
-            <p class="stat-label">Audit Logs</p>
-            <p class="stat-value" id="metric-audit-log-count">0</p>
-          </article>
-          <article class="card stat-card">
-            <p class="stat-label">High Risk Users</p>
-            <p class="stat-value" id="metric-high-risk-count">0</p>
-          </article>
-        </section>
+                <div class="panel metric-panel">
+                  <p class="panel-label">Identity controls</p>
+                  <div class="gauge gauge--small" id="controls-gauge">
+                    <div class="gauge-inner">
+                      <strong id="controls-gauge-value">0%</strong>
+                      <span>Coverage</span>
+                    </div>
+                  </div>
+                </div>
 
-        <section class="grid two-up">
-          <article class="card">
-            <h2>Admin Actions</h2>
-            <div class="button-row wrap">
-              <button type="button" data-action="dashboard">Dashboard</button>
-              <button type="button" data-action="security-events">Security Events</button>
-              <button type="button" data-action="audit-logs">Audit Logs</button>
-              <button type="button" data-action="risk-summary">Risk Summary</button>
-              <button type="button" data-action="users">Load Users</button>
-            </div>
-            <ol class="demo-steps">
-              <li>Login with the demo admin or your own admin account.</li>
-              <li>Verify the one-time code and enter the dashboard.</li>
-              <li>Refresh dashboard and load users.</li>
-              <li>Delete a test user or assign a role from inside the dashboard.</li>
-            </ol>
-          </article>
+                <div class="panel metric-panel">
+                  <p class="panel-label">Risk exposure</p>
+                  <div class="gauge gauge--small gauge--alert" id="risk-gauge">
+                    <div class="gauge-inner">
+                      <strong id="risk-gauge-value">0%</strong>
+                      <span>Exposure</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </article>
 
-          <article class="card">
-            <h2>Admin Role Assignment</h2>
-            <form id="role-form" class="stack">
-              <label>
-                User Email
-                <input name="email" type="email" placeholder="peer@example.com" required>
-              </label>
-              <label>
-                Role
-                <input name="role" value="admin" required>
-              </label>
-              <button type="submit">Assign Role</button>
-            </form>
-          </article>
-        </section>
+            <article class="card-shell session-card">
+              <p class="eyebrow">Current session</p>
+              <h2>Operator context</h2>
+              <div class="session-status-row">
+                <span class="status-dot"></span>
+                <span id="session-status">Logged out</span>
+              </div>
+              <div class="stack compact">
+                <div>
+                  <p class="panel-label">User</p>
+                  <pre id="current-user-box">No user loaded.</pre>
+                </div>
+                <div>
+                  <p class="panel-label">Token</p>
+                  <pre id="token-preview">No token</pre>
+                </div>
+              </div>
+            </article>
+          </section>
 
-        <section class="grid two-up">
-          <article class="card">
-            <h2>User Management</h2>
-            <form id="delete-user-form" class="stack">
-              <label>
-                User ID
-                <input name="user_id" type="number" min="1" placeholder="Load users first" required>
-              </label>
+          <section class="metric-grid">
+            <article class="card-shell stat-card">
+              <p class="stat-label">Users</p>
+              <p class="stat-value" id="metric-user-count">0</p>
+              <p class="stat-subtext">Registered identities</p>
+            </article>
+            <article class="card-shell stat-card">
+              <p class="stat-label">Security Events</p>
+              <p class="stat-value" id="metric-security-event-count">0</p>
+              <p class="stat-subtext">Threat monitoring feed</p>
+            </article>
+            <article class="card-shell stat-card">
+              <p class="stat-label">Audit Logs</p>
+              <p class="stat-value" id="metric-audit-log-count">0</p>
+              <p class="stat-subtext">Tracked admin actions</p>
+            </article>
+            <article class="card-shell stat-card">
+              <p class="stat-label">High Risk Users</p>
+              <p class="stat-value" id="metric-high-risk-count">0</p>
+              <p class="stat-subtext">Need review now</p>
+            </article>
+          </section>
+
+          <section class="content-grid content-grid--wide">
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Operational controls</p>
+                  <h2>Admin actions</h2>
+                </div>
+              </div>
               <div class="button-row wrap">
+                <button type="button" data-action="dashboard">Dashboard</button>
+                <button type="button" data-action="security-events">Security Events</button>
+                <button type="button" data-action="audit-logs">Audit Logs</button>
+                <button type="button" data-action="risk-summary">Risk Summary</button>
                 <button type="button" data-action="users">Load Users</button>
-                <button type="submit" class="secondary">Delete User</button>
               </div>
-            </form>
-            <p class="hint">Delete uses user ID so the admin feed can stay masked by default.</p>
-          </article>
+              <ol class="demo-steps">
+                <li>Sign in with the time-limited code and land in the dashboard.</li>
+                <li>Refresh dashboard posture and inspect security evidence.</li>
+                <li>Review audit logs with masked IP-aware activity details.</li>
+                <li>Use user management to delete a temporary account or assign a role.</li>
+              </ol>
+            </article>
 
-          <article class="card">
-            <h2>Data Governance</h2>
-            <ul class="demo-steps compact-list">
-              <li>Login uses a time-limited random code before the session token is issued.</li>
-              <li>Admin feeds mask personal identifiers and IP data by default.</li>
-              <li>User deletion is tracked in audit logs and limited to administrators.</li>
-            </ul>
-          </article>
-        </section>
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Future capability</p>
+                  <h2>Network security lane</h2>
+                </div>
+              </div>
+              <div class="future-module-grid">
+                <div class="future-module">
+                  <strong>North-south traffic</strong>
+                  <span>Firewall events and ingress anomalies</span>
+                </div>
+                <div class="future-module">
+                  <strong>East-west movement</strong>
+                  <span>Lateral access checks across services</span>
+                </div>
+                <div class="future-module">
+                  <strong>Vulnerability signals</strong>
+                  <span>CVE ingestion and remediation queue</span>
+                </div>
+                <div class="future-module">
+                  <strong>Incident response</strong>
+                  <span>Escalation workflow and containment hooks</span>
+                </div>
+              </div>
+            </article>
+          </section>
 
-        <section class="grid two-up results">
-          <article class="card">
-            <h2>Message</h2>
-            <pre id="message-box">Ready.</pre>
-          </article>
-          <article class="card">
-            <h2>API Response</h2>
-            <pre id="response-box">No response yet.</pre>
-          </article>
-        </section>
+          <section class="content-grid">
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">User access</p>
+                  <h2>Role assignment</h2>
+                </div>
+              </div>
+              <form id="role-form" class="stack">
+                <label>
+                  User Email
+                  <input name="email" type="email" placeholder="peer@example.com" required>
+                </label>
+                <label>
+                  Role
+                  <input name="role" value="admin" required>
+                </label>
+                <button type="submit">Assign Role</button>
+              </form>
+            </article>
 
-        <section class="grid two-up results">
-          <article class="card">
-            <h2>System Snapshot</h2>
-            <pre id="system-summary-box">Dashboard summary not loaded yet.</pre>
-          </article>
-          <article class="card">
-            <h2>User List</h2>
-            <pre id="users-box">Load users to view masked email, roles, and recent IP information.</pre>
-          </article>
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">User management</p>
+                  <h2>Delete temporary user</h2>
+                </div>
+              </div>
+              <form id="delete-user-form" class="stack">
+                <label>
+                  User ID
+                  <input name="user_id" type="number" min="1" placeholder="Load users first" required>
+                </label>
+                <div class="button-row wrap">
+                  <button type="button" data-action="users">Load Users</button>
+                  <button type="submit" class="secondary">Delete User</button>
+                </div>
+              </form>
+              <p class="hint">Deletion cleans linked sessions, role mappings, challenges, and audit history for demo hygiene.</p>
+            </article>
+
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Governance</p>
+                  <h2>Data handling controls</h2>
+                </div>
+              </div>
+              <ul class="demo-steps compact-list">
+                <li>Personal identifiers are masked in admin feeds by default.</li>
+                <li>Time-limited codes reduce risk before token issue.</li>
+                <li>Audit logs preserve IP context while limiting exposure.</li>
+                <li>Future governance will extend into network-level evidence and incident data.</li>
+              </ul>
+            </article>
+          </section>
+
+          <section class="content-grid">
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Activity</p>
+                  <h2>Operator message</h2>
+                </div>
+              </div>
+              <pre id="message-box">Ready.</pre>
+            </article>
+
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">API trace</p>
+                  <h2>Live response</h2>
+                </div>
+              </div>
+              <pre id="response-box">No response yet.</pre>
+            </article>
+          </section>
+
+          <section class="content-grid">
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Snapshot</p>
+                  <h2>System summary</h2>
+                </div>
+              </div>
+              <pre id="system-summary-box">Dashboard summary not loaded yet.</pre>
+            </article>
+
+            <article class="card-shell content-card">
+              <div class="section-heading compact">
+                <div>
+                  <p class="eyebrow">Inventory</p>
+                  <h2>User list</h2>
+                </div>
+              </div>
+              <pre id="users-box">Load users to view masked email, roles, and recent IP information.</pre>
+            </article>
+          </section>
         </section>
-      </section>
-    </main>
+      </div>
+    </div>
     <script src="{{ url_for('static', filename='demo.js') }}"></script>
   </body>
 </html>

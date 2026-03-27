@@ -22,6 +22,12 @@ const metricUserCount = document.getElementById("metric-user-count");
 const metricSecurityEventCount = document.getElementById("metric-security-event-count");
 const metricAuditLogCount = document.getElementById("metric-audit-log-count");
 const metricHighRiskCount = document.getElementById("metric-high-risk-count");
+const overviewGauge = document.getElementById("overview-gauge");
+const controlsGauge = document.getElementById("controls-gauge");
+const riskGauge = document.getElementById("risk-gauge");
+const overviewGaugeValue = document.getElementById("overview-gauge-value");
+const controlsGaugeValue = document.getElementById("controls-gauge-value");
+const riskGaugeValue = document.getElementById("risk-gauge-value");
 
 function getToken() {
   return localStorage.getItem(tokenKey) || "";
@@ -97,14 +103,35 @@ function setLoginFields(email, password) {
   loginForm.elements.password.value = password;
 }
 
+function setGauge(element, value, labelNode) {
+  const nextValue = Math.max(0, Math.min(100, Math.round(value)));
+  if (element) {
+    element.style.setProperty("--gauge", `${nextValue}%`);
+  }
+  if (labelNode) {
+    labelNode.textContent = `${nextValue}%`;
+  }
+}
+
 function updateDashboardMetrics(usersPayload, dashboardPayload) {
   const users = usersPayload?.users || [];
   const systemSummary = dashboardPayload?.system_summary || {};
   const riskUsers = dashboardPayload?.risk_summary?.users || [];
+  const highRiskCount = riskUsers.filter((user) => user.risk_level === "high").length;
+  const userCount = users.length;
+  const securityEventCount = systemSummary.security_event_count || 0;
+  const auditLogCount = systemSummary.audit_log_count || 0;
+  const posturePercent = userCount ? ((userCount - highRiskCount) / userCount) * 100 : 100;
+  const controlsPercent = (auditLogCount + securityEventCount) ? (auditLogCount / (auditLogCount + securityEventCount)) * 100 : 100;
+  const exposurePercent = userCount ? (highRiskCount / userCount) * 100 : 0;
+
   metricUserCount.textContent = String(users.length);
-  metricSecurityEventCount.textContent = String(systemSummary.security_event_count || 0);
-  metricAuditLogCount.textContent = String(systemSummary.audit_log_count || 0);
-  metricHighRiskCount.textContent = String(riskUsers.filter((user) => user.risk_level === "high").length);
+  metricSecurityEventCount.textContent = String(securityEventCount);
+  metricAuditLogCount.textContent = String(auditLogCount);
+  metricHighRiskCount.textContent = String(highRiskCount);
+  setGauge(overviewGauge, posturePercent, overviewGaugeValue);
+  setGauge(controlsGauge, controlsPercent, controlsGaugeValue);
+  setGauge(riskGauge, exposurePercent, riskGaugeValue);
 }
 
 async function request(path, {method = "GET", body = null, auth = false} = {}) {
