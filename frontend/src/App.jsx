@@ -161,95 +161,65 @@ function governanceItems(dataGovernance) {
   ].filter(Boolean);
 }
 
-function LoginPage({ loginForm, setLoginForm, verifyForm, setVerifyForm, latestCode, message, response, requestLoginCode, handleVerifyCode }) {
-  const showFallbackCode = /^\d{6}$/.test(latestCode || '');
-
+function LoginPage({ loginForm, setLoginForm, verifyForm, setVerifyForm, message, requestLoginCode, handleVerifyCode }) {
   return (
     <div className="console-login-page">
-      <div className="login-shell">
-        <div className="login-hero">
+      <div className="login-shell login-shell--narrow">
+        <div className="login-simple-head">
           <div className="login-hero-badge">SecureAccessAI</div>
-          <Title level={1} className="login-title">Application Security Platform</Title>
-          <Paragraph className="console-muted login-copy">
-            Password plus authenticator verification for a security operations console. After sign-in, the operator can manage identity, risk events, audit activity, data governance, and future network security modules.
+          <Title level={1} className="login-title">Sign in</Title>
+          <Paragraph className="console-muted login-copy login-copy--compact">
+            Use your email, password, and the 6-digit code from Microsoft Authenticator to open the security console.
           </Paragraph>
-          <Row gutter={[16, 16]}>
-            <Col xs={24} md={8}><Card><Statistic title="Authentication" value="Password + TOTP" /></Card></Col>
-            <Col xs={24} md={8}><Card><Statistic title="Threat Signals" value="IP + Rate Limits" /></Card></Col>
-            <Col xs={24} md={8}><Card><Statistic title="Operations" value="RBAC + Audit" /></Card></Col>
-          </Row>
         </div>
 
-        <Row gutter={[24, 24]}>
-          <Col xs={24} lg={15}>
-            <Card title="Login and verification" className="login-main-card">
-              <Form layout="vertical" onFinish={() => requestLoginCode()}>
-                <Form.Item label="Email">
-                  <Input
-                    size="large"
-                    prefix={<UserOutlined />}
-                    value={loginForm.email}
-                    onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="demo-admin@example.com"
-                  />
-                </Form.Item>
-                <Form.Item label="Password">
-                  <Input.Password
-                    size="large"
-                    prefix={<LockOutlined />}
-                    value={loginForm.password}
-                    onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
-                    placeholder="Enter account password"
-                  />
-                </Form.Item>
-                <Button type="primary" size="large" htmlType="submit" disabled={!loginForm.email || !loginForm.password} block>
-                  Request Verification Code
-                </Button>
-              </Form>
+        <Card className="login-main-card login-main-card--single">
+          <Form layout="vertical" onFinish={() => requestLoginCode()}>
+            <Form.Item label="Email">
+              <Input
+                size="large"
+                prefix={<UserOutlined />}
+                value={loginForm.email}
+                onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
+                placeholder="demo-admin@example.com"
+              />
+            </Form.Item>
+            <Form.Item label="Password">
+              <Input.Password
+                size="large"
+                prefix={<LockOutlined />}
+                value={loginForm.password}
+                onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
+                placeholder="Enter account password"
+              />
+            </Form.Item>
+            <Button type="primary" size="large" htmlType="submit" disabled={!loginForm.email || !loginForm.password} block>
+              Request Verification Code
+            </Button>
+          </Form>
 
-              <div className="login-divider" />
+          <div className="login-divider" />
 
-              <Form layout="vertical" onFinish={handleVerifyCode}>
-                <Form.Item label="Challenge ID">
-                  <Input
-                    size="large"
-                    prefix={<KeyOutlined />}
-                    value={verifyForm.challenge_id}
-                    onChange={(event) => setVerifyForm((prev) => ({ ...prev, challenge_id: event.target.value }))}
-                    placeholder="Auto-filled after requesting a challenge"
-                  />
-                </Form.Item>
-                <Form.Item label="Authenticator code">
-                  <Input
-                    size="large"
-                    prefix={<SafetyCertificateOutlined />}
-                    value={verifyForm.code}
-                    onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))}
-                    placeholder="Enter the current 6-digit app code"
-                  />
-                </Form.Item>
-                <Button type="primary" size="large" htmlType="submit" disabled={!verifyForm.challenge_id || !verifyForm.code} block>
-                  Verify and Open Console
-                </Button>
-              </Form>
-            </Card>
-          </Col>
+          <Form layout="vertical" onFinish={handleVerifyCode}>
+            <Form.Item label="Authenticator code">
+              <Input
+                size="large"
+                prefix={<SafetyCertificateOutlined />}
+                value={verifyForm.code}
+                onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))}
+                placeholder="Enter the current 6-digit code"
+              />
+            </Form.Item>
+            <Button type="primary" size="large" htmlType="submit" disabled={!verifyForm.challenge_id || !verifyForm.code} block>
+              Verify and Open Console
+            </Button>
+          </Form>
 
-          <Col xs={24} lg={9}>
-            <Space direction="vertical" size={16} style={{ width: '100%' }}>
-              <Card title="Operator status">
-                <Space direction="vertical" size={14} style={{ width: '100%' }}>
-                  <Alert type={responseTone(message)} showIcon message={message} />
-                  <Text type="secondary">Use the Microsoft Authenticator 6-digit code after you request a verification challenge.</Text>
-                  {showFallbackCode ? <Tag color="gold">Demo fallback code: {latestCode}</Tag> : null}
-                </Space>
-              </Card>
-              <Card title="Latest API response">
-                <pre className="json-block json-block--compact">{response}</pre>
-              </Card>
-            </Space>
-          </Col>
-        </Row>
+          <div className="login-note-row">
+            <Alert type={responseTone(message)} showIcon message={message} />
+            <Text type="secondary">Challenge details are handled in the background after you request a verification code.</Text>
+          </div>
+        </Card>
       </div>
     </div>
   );
@@ -883,7 +853,6 @@ export function App() {
         setLoginForm={setLoginForm}
         verifyForm={verifyForm}
         setVerifyForm={setVerifyForm}
-        latestCode={latestCode}
         message={message}
         response={response}
         requestLoginCode={requestLoginCode}
