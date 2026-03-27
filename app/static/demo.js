@@ -254,6 +254,18 @@ async function handleDeleteUser(event) {
 }
 
 async function runAction(action) {
+  if (action === "switch-account") {
+    setToken("");
+    showCurrentUser("No user loaded.");
+    showUsers("Load users to view masked email, roles, and recent IP information.");
+    showSystemSummary("Dashboard summary not loaded yet.");
+    updateDashboardMetrics({users: []}, {system_summary: {}, risk_summary: {users: []}});
+    showMessage("Session cleared. You can request a new login code.");
+    showResponse("Switched back to login.");
+    goToDemo();
+    return;
+  }
+
   if (action === "logout") {
     try {
       const data = await request("/api/auth/logout", {method: "POST", auth: true});
