@@ -1,24 +1,24 @@
-from flask import Blueprint, current_app, render_template
+from flask import Blueprint, current_app, redirect, render_template
 
 ui_bp = Blueprint("ui", __name__)
 
 
 @ui_bp.get("/")
 def index():
-    return render_template("demo.html", **_demo_context(page_mode="demo"))
+    return render_template("console.html", **_console_context(page_mode="login"))
 
 
 @ui_bp.get("/demo")
-def demo():
-    return render_template("demo.html", **_demo_context(page_mode="demo"))
+def demo_redirect():
+    return redirect("/")
 
 
 @ui_bp.get("/dashboard")
 def dashboard():
-    return render_template("demo.html", **_demo_context(page_mode="dashboard"))
+    return render_template("console.html", **_console_context(page_mode="dashboard"))
 
 
-def _demo_context(*, page_mode: str) -> dict:
+def _console_context(*, page_mode: str) -> dict:
     return {
         "page_mode": page_mode,
         "demo_admin_email": current_app.config.get("DEMO_ADMIN_EMAIL", ""),

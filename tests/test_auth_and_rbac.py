@@ -415,17 +415,18 @@ def test_admin_responses_mask_personal_data_by_default(client):
     assert any("***" in event["ip_address"] for event in payload["events"])
 
 
-def test_demo_ui_page_renders(client):
+def test_console_login_page_renders(client):
     response = client.get("/")
     assert response.status_code == 200
-    assert b"SecureAccessAI Demo" in response.data
-    assert b"Verify Time-Limited Code" in response.data
+    assert b"SecureAccessAI Console" in response.data
+    assert b'id="root"' in response.data
+    assert b"console/app.js" in response.data
 
 
-def test_demo_alias_page_renders(client):
-    response = client.get("/demo")
-    assert response.status_code == 200
-    assert b"Secure Access Demo" in response.data
+def test_demo_alias_redirects_to_login_page(client):
+    response = client.get("/demo", follow_redirects=False)
+    assert response.status_code == 302
+    assert response.headers["Location"] == "/"
 
 
 def test_demo_admin_seeded_account_can_complete_demo_login_flow():
@@ -446,9 +447,9 @@ def test_demo_admin_seeded_account_can_complete_demo_login_flow():
     )
     local_client = app.test_client()
 
-    page = local_client.get("/demo")
+    page = local_client.get("/")
     assert page.status_code == 200
-    assert b"Quick Demo Login" in page.data
+    assert b"window.SECUREACCESS_BOOTSTRAP" in page.data
     assert b"demo-admin@example.com" in page.data
 
     challenge = _start_login(local_client, "demo-admin@example.com", "Pass1234!", ip_address="10.0.3.10")
@@ -504,25 +505,17 @@ def test_audit_logs_include_masked_ip_detail(client):
     assert any("***" in detail for detail in details)
 
 
-def test_demo_page_includes_dashboard_shell(client):
-    response = client.get("/demo")
+def test_login_page_includes_console_bootstrap(client):
+    response = client.get("/")
     assert response.status_code == 200
-    assert b"Security Dashboard" in response.data
-    assert b"dashboard-shell" in response.data
-    assert b"Latest Demo Code" in response.data
-    assert b"demo-code-box" in response.data
-    assert b'data-nav-target="resources"' in response.data
-    assert b'data-console-page="resources"' in response.data
-    assert b'id="open-dashboard"' in response.data
+    assert b"window.SECUREACCESS_BOOTSTRAP" in response.data
+    assert b"console/app.css" in response.data
+    assert b"console/app.js" in response.data
 
 
 def test_dashboard_page_renders_dashboard_mode(client):
     response = client.get("/dashboard")
     assert response.status_code == 200
-    assert b'data-page-mode="dashboard"' in response.data
-    assert b"Security Dashboard" in response.data
-    assert b"Switch Account" in response.data
-    assert b'data-nav-target="activity"' in response.data
-    assert b'id="activity-section"' in response.data
-    assert b'data-console-page="activity"' in response.data
-    assert b'data-console-page="settings"' in response.data
+    assert b"window.SECUREACCESS_BOOTSTRAP" in response.data
+    assert b'pageMode: "dashboard"' in response.data
+    assert b"console/app.js" in response.data

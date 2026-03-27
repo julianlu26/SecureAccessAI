@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SecureAccessAI Console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='console/app.css') }}">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      window.SECUREACCESS_BOOTSTRAP = {
+        pageMode: {{ page_mode|tojson }},
+        demoAdminEmail: {{ demo_admin_email|tojson }},
+        demoAdminPassword: {{ demo_admin_password|tojson }},
+        demoAdminUsername: {{ demo_admin_username|tojson }}
+      };
+    </script>
+    <script type="module" src="{{ url_for('static', filename='console/app.js') }}"></script>
+  </body>
+</html>

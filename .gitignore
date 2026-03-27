@@ -6,3 +6,5 @@ instance/
 .pytest_cache/
 .DS_Store
 root/
+
+frontend/node_modules/
