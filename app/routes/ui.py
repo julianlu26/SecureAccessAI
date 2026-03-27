@@ -5,16 +5,22 @@ ui_bp = Blueprint("ui", __name__)
 
 @ui_bp.get("/")
 def index():
-    return render_template("demo.html", **_demo_context())
+    return render_template("demo.html", **_demo_context(page_mode="demo"))
 
 
 @ui_bp.get("/demo")
 def demo():
-    return render_template("demo.html", **_demo_context())
+    return render_template("demo.html", **_demo_context(page_mode="demo"))
 
 
-def _demo_context() -> dict:
+@ui_bp.get("/dashboard")
+def dashboard():
+    return render_template("demo.html", **_demo_context(page_mode="dashboard"))
+
+
+def _demo_context(*, page_mode: str) -> dict:
     return {
+        "page_mode": page_mode,
         "demo_admin_email": current_app.config.get("DEMO_ADMIN_EMAIL", ""),
         "demo_admin_password": current_app.config.get("DEMO_ADMIN_PASSWORD", ""),
         "demo_admin_username": current_app.config.get("DEMO_ADMIN_USERNAME", "demo-admin"),

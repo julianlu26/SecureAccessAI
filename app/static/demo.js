@@ -12,6 +12,7 @@ const tokenPreview = document.getElementById("token-preview");
 const sessionStatus = document.getElementById("session-status");
 const challengeInput = document.getElementById("challenge-id");
 const loginForm = document.getElementById("login-form");
+const pageMode = document.body.dataset.pageMode || "demo";
 const demoAdminEmail = document.body.dataset.demoAdminEmail || "";
 const demoAdminPassword = document.body.dataset.demoAdminPassword || "";
 
@@ -36,11 +37,27 @@ function setToken(token) {
 function syncSessionView() {
   const token = getToken();
   const loggedIn = Boolean(token);
+  if (!loggedIn && pageMode === "dashboard") {
+    window.location.replace("/demo");
+    return;
+  }
   sessionStatus.textContent = loggedIn ? "Logged in" : "Logged out";
   tokenPreview.textContent = loggedIn ? `${token.slice(0, 48)}...` : "No token";
   authShell.classList.toggle("hidden", loggedIn);
   dashboardShell.classList.toggle("hidden", !loggedIn);
   globalStatusChip.textContent = loggedIn ? "Dashboard active" : "Ready for demo";
+}
+
+function goToDashboard() {
+  if (window.location.pathname !== "/dashboard") {
+    window.location.assign("/dashboard");
+  }
+}
+
+function goToDemo() {
+  if (window.location.pathname !== "/demo") {
+    window.location.assign("/demo");
+  }
 }
 
 function showMessage(text) {
@@ -125,7 +142,7 @@ async function loginWithPayload(payload) {
       showMessage(`Login code issued. Verify the one-time code to finish sign-in.${demoCode}`);
     } else if (data.access_token) {
       setToken(data.access_token);
-      await bootstrapDashboard();
+      goToDashboard();
       showMessage("Login succeeded.");
     }
     showResponse(data);
@@ -149,8 +166,14 @@ async function handleVerifyCode(event) {
   try {
     const data = await request("/api/auth/verify-code", {method: "POST", body: payload});
     setToken(data.access_token);
-    await bootstrapDashboard();
-    showMessage("Verification succeeded. Dashboard loaded.");
+    if (pageMode === "dashboard") {
+      await bootstrapDashboard();
+      showMessage("Verification succeeded. Dashboard loaded.");
+    } else {
+      showMessage("Verification succeeded. Redirecting to dashboard.");
+      goToDashboard();
+      return;
+    }
     showResponse(data);
   } catch (error) {
     showMessage(`Verification failed (${error.status || "error"}).`);
@@ -241,6 +264,7 @@ async function runAction(action) {
       updateDashboardMetrics({users: []}, {system_summary: {}, risk_summary: {users: []}});
       showMessage("Logged out.");
       showResponse(data);
+      goToDemo();
     } catch (error) {
       showMessage(`Logout failed (${error.status || "error"}).`);
       showResponse(error.data || error);
@@ -307,5 +331,9 @@ document.querySelectorAll("[data-action]").forEach((button) => {
 wireDemoLoginButtons();
 syncSessionView();
 if (getToken()) {
-  bootstrapDashboard();
+  if (pageMode === "demo") {
+    goToDashboard();
+  } else {
+    bootstrapDashboard();
+  }
 }
