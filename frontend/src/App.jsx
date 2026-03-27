@@ -1,20 +1,50 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import {
+  Alert,
+  Avatar,
+  Button,
+  Card,
+  Col,
+  Descriptions,
+  Form,
+  Input,
+  Layout,
+  List,
+  Menu,
+  Progress,
+  Row,
+  Space,
+  Statistic,
+  Table,
+  Tabs,
+  Tag,
+  Typography,
+} from 'antd';
+import {
+  AuditOutlined,
+  CloudServerOutlined,
+  DatabaseOutlined,
+  DeleteOutlined,
+  KeyOutlined,
+  LockOutlined,
+  RadarChartOutlined,
+  SafetyCertificateOutlined,
+  SearchOutlined,
+  SecurityScanOutlined,
+  SettingOutlined,
+  TeamOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+
+const { Header, Sider, Content } = Layout;
+const { Title, Text, Paragraph } = Typography;
 
 const bootstrap = window.SECUREACCESS_BOOTSTRAP || {};
 const TOKEN_KEY = 'secureaccessai_console_token';
 const LEGACY_TOKEN_KEY = 'secureaccessai_demo_token';
-
-const NAV_ITEMS = [
-  { id: 'resources', label: 'Resources' },
-  { id: 'activity', label: 'Activity' },
-  { id: 'settings', label: 'Settings' },
-];
-
-const RESOURCE_ITEMS = [
-  { id: 'identity', label: 'Identity' },
-  { id: 'threats', label: 'Threats' },
-  { id: 'network', label: 'Network Security' },
-];
+const DEFAULT_USERS_MESSAGE = 'Load users to view masked email, roles, and recent IP information.';
+const DEFAULT_SYSTEM_MESSAGE = 'Dashboard summary not loaded yet.';
+const DEFAULT_RESPONSE_MESSAGE = 'No response yet.';
 
 function getStoredToken() {
   return localStorage.getItem(TOKEN_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
@@ -47,56 +77,482 @@ async function apiRequest(path, { method = 'GET', body, token } = {}) {
   return payload;
 }
 
+function prettyJson(value) {
+  if (typeof value === 'string') return value;
+  return JSON.stringify(value, null, 2);
+}
+
 function maskToken(token) {
   if (!token) return 'No token';
-  return `${token.slice(0, 36)}...`;
+  return `${token.slice(0, 24)}...${token.slice(-8)}`;
 }
 
-function MetricCard({ label, value, hint, tone = 'default' }) {
-  return (
-    <article className={`metric-card metric-card--${tone}`}>
-      <span className="metric-card__label">{label}</span>
-      <strong className="metric-card__value">{value}</strong>
-      <span className="metric-card__hint">{hint}</span>
-    </article>
-  );
+function riskStatusTone(highRisk) {
+  if (highRisk > 0) return 'exception';
+  return 'success';
 }
 
-function ActionButton({ children, tone = 'primary', ...props }) {
-  return (
-    <button className={`action-button action-button--${tone}`} {...props}>
-      {children}
-    </button>
-  );
+function responseTag(statusText) {
+  if (/failed|error/i.test(statusText)) return 'error';
+  if (/ready|loaded|succeeded|success/i.test(statusText)) return 'success';
+  return 'processing';
 }
 
-function Panel({ eyebrow, title, children, actions }) {
+function parseUsers(usersPayload) {
+  if (!usersPayload || typeof usersPayload === 'string') return [];
+  return (usersPayload.users || []).map((user) => ({
+    key: user.id,
+    id: user.id,
+    username: user.username,
+    email: user.masked_email,
+    roles: user.roles || [],
+    lastIp: user.last_ip_address || 'No activity yet',
+    active: user.is_active,
+  }));
+}
+
+function parseAuditRows(response) {
+  if (!response || typeof response === 'string') return [];
+  const logs = response.logs || [];
+  return logs.map((log) => ({
+    key: log.id,
+    action: log.action,
+    target: log.target_email || 'System',
+    status: log.status,
+    detail: log.detail || '-',
+    createdAt: log.created_at,
+  }));
+}
+
+function parseEventRows(response) {
+  if (!response || typeof response === 'string') return [];
+  const events = response.events || [];
+  return events.map((event) => ({
+    key: event.id,
+    email: event.email,
+    ip: event.ip_address,
+    type: event.event_type,
+    outcome: event.outcome,
+    risk: event.risk_score,
+    createdAt: event.created_at,
+  }));
+}
+
+function parseRiskRows(response) {
+  if (!response || typeof response === 'string') return [];
+  const users = response.risk_summary?.users || response.users || [];
+  return users.map((user, index) => ({
+    key: `${user.email}-${index}`,
+    email: user.email,
+    level: user.risk_level,
+    score: user.risk_score,
+    failedAttempts: user.failed_attempts,
+    blockedAttempts: user.blocked_attempts,
+    recentIps: user.recent_ip_count,
+  }));
+}
+
+function LoginPage({
+  loginForm,
+  setLoginForm,
+  verifyForm,
+  setVerifyForm,
+  latestCode,
+  message,
+  response,
+  requestLoginCode,
+  handleVerifyCode,
+  fillSeededAccess,
+}) {
+  const totpSetupConfigured = Boolean(bootstrap.demoTotpEnabled && bootstrap.demoTotpQrDataUrl);
+
   return (
-    <section className="panel-card">
-      <header className="panel-card__header">
-        <div>
-          {eyebrow ? <p className="panel-card__eyebrow">{eyebrow}</p> : null}
-          <h3>{title}</h3>
+    <div className="console-login-page">
+      <div className="console-login-shell">
+        <div className="console-login-hero">
+          <div className="console-login-brand">
+            <Avatar shape="square" size={56} style={{ background: '#173da6', fontWeight: 700 }}>SA</Avatar>
+            <div>
+              <Text className="section-label">Security Workspace</Text>
+              <Title level={2} style={{ margin: 0 }}>SecureAccessAI Control Plane</Title>
+            </div>
+          </div>
+          <Paragraph className="console-muted" style={{ fontSize: 16, maxWidth: 620 }}>
+            Enterprise-style access workflow with password verification, authenticator QR setup, RBAC, audit trails, and threat monitoring.
+          </Paragraph>
+          <Row gutter={[16, 16]}>
+            <Col xs={24} md={8}>
+              <Card>
+                <Statistic title="Auth Mode" value="Password + TOTP" />
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card>
+                <Statistic title="Risk Engine" value="IP + Anomaly" />
+              </Card>
+            </Col>
+            <Col xs={24} md={8}>
+              <Card>
+                <Statistic title="Ops Surface" value="Audit + RBAC" />
+              </Card>
+            </Col>
+          </Row>
         </div>
-        {actions ? <div className="panel-card__actions">{actions}</div> : null}
-      </header>
-      <div className="panel-card__body">{children}</div>
-    </section>
+
+        <Row gutter={[20, 20]} align="stretch">
+          <Col xs={24} lg={10}>
+            <Card title="Sign in" extra={<Tag color="blue">Step 1</Tag>}>
+              <Form layout="vertical" onFinish={() => requestLoginCode()}>
+                <Form.Item label="Email">
+                  <Input
+                    size="large"
+                    prefix={<UserOutlined />}
+                    value={loginForm.email}
+                    onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
+                    placeholder="demo-admin@example.com"
+                  />
+                </Form.Item>
+                <Form.Item label="Password">
+                  <Input.Password
+                    size="large"
+                    prefix={<LockOutlined />}
+                    value={loginForm.password}
+                    onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
+                    placeholder="Pass1234!"
+                  />
+                </Form.Item>
+                <Space wrap>
+                  <Button type="primary" size="large" htmlType="submit" disabled={!loginForm.email || !loginForm.password}>
+                    Request Verification Code
+                  </Button>
+                  <Button size="large" onClick={fillSeededAccess}>Use Seeded Access</Button>
+                </Space>
+              </Form>
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={14}>
+            <Card title="Authenticator setup" extra={<Tag color="green">Step 2</Tag>}>
+              {totpSetupConfigured ? (
+                <div className="auth-qr-grid">
+                  <div className="auth-qr-tile">
+                    <img src={bootstrap.demoTotpQrDataUrl} alt="Authenticator QR code" />
+                  </div>
+                  <div>
+                    <Paragraph className="console-muted">
+                      Scan this once with Microsoft Authenticator or Google Authenticator. Then enter the current 6-digit code after requesting a login challenge.
+                    </Paragraph>
+                    <Descriptions size="small" column={1} bordered>
+                      <Descriptions.Item label="Issuer">{bootstrap.demoTotpIssuer || 'SecureAccessAI'}</Descriptions.Item>
+                      <Descriptions.Item label="Account">{bootstrap.demoTotpAccount || bootstrap.demoAdminEmail || 'demo-admin@example.com'}</Descriptions.Item>
+                      <Descriptions.Item label="Manual secret">
+                        <span className="mono-inline">{bootstrap.demoTotpSecret || 'Not configured'}</span>
+                      </Descriptions.Item>
+                    </Descriptions>
+                  </div>
+                </div>
+              ) : (
+                <Alert type="warning" showIcon message="Authenticator QR is not configured for this demo account." />
+              )}
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={14}>
+            <Card title="Verify and open console" extra={<Tag color="purple">Step 3</Tag>}>
+              <Form layout="vertical" onFinish={handleVerifyCode}>
+                <Form.Item label="Challenge ID">
+                  <Input
+                    size="large"
+                    prefix={<KeyOutlined />}
+                    value={verifyForm.challenge_id}
+                    onChange={(event) => setVerifyForm((prev) => ({ ...prev, challenge_id: event.target.value }))}
+                    placeholder="Auto-filled after password step"
+                  />
+                </Form.Item>
+                <Form.Item label="Authenticator code">
+                  <Input
+                    size="large"
+                    prefix={<SafetyCertificateOutlined />}
+                    value={verifyForm.code}
+                    onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))}
+                    placeholder="Enter current 6-digit code"
+                  />
+                </Form.Item>
+                <Space wrap>
+                  <Button type="primary" size="large" htmlType="submit" disabled={!verifyForm.challenge_id || !verifyForm.code}>
+                    Verify and Open Console
+                  </Button>
+                  <Tag color="processing">Latest fallback code: {latestCode}</Tag>
+                </Space>
+              </Form>
+            </Card>
+          </Col>
+
+          <Col xs={24} lg={10}>
+            <Card title="Operator status">
+              <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                <Alert type={responseTag(message)} showIcon message={message} />
+                <Card size="small" title="Seeded operator" bodyStyle={{ paddingTop: 12, paddingBottom: 12 }}>
+                  <Descriptions size="small" column={1}>
+                    <Descriptions.Item label="Username">{bootstrap.demoAdminUsername || 'demo-admin'}</Descriptions.Item>
+                    <Descriptions.Item label="Email">{bootstrap.demoAdminEmail || 'Not configured'}</Descriptions.Item>
+                    <Descriptions.Item label="Password">{bootstrap.demoAdminPassword || 'Not configured'}</Descriptions.Item>
+                  </Descriptions>
+                </Card>
+                <Card size="small" title="Latest API response">
+                  <pre className="json-block">{response}</pre>
+                </Card>
+              </Space>
+            </Card>
+          </Col>
+        </Row>
+      </div>
+    </div>
   );
 }
 
-function CodeBlock({ children }) {
-  return <pre className="code-block">{children}</pre>;
+function AppDashboard({
+  activePage,
+  setActivePage,
+  message,
+  response,
+  currentUser,
+  currentUserEmail,
+  systemSummary,
+  usersPayload,
+  metrics,
+  token,
+  handleAction,
+  handleAssignRole,
+  handleDeleteUser,
+  handleSignOut,
+  roleForm,
+  setRoleForm,
+  deleteUserId,
+  setDeleteUserId,
+}) {
+  const auditRows = parseAuditRows(response);
+  const eventRows = parseEventRows(response);
+  const riskRows = parseRiskRows(response);
+  const usersRows = parseUsers(usersPayload);
+
+  const menuItems = [
+    { key: 'resources', icon: <CloudServerOutlined />, label: 'Resources' },
+    { key: 'activity', icon: <AuditOutlined />, label: 'Activity' },
+    { key: 'settings', icon: <SettingOutlined />, label: 'Settings' },
+  ];
+
+  const topTabs = [
+    { key: 'resources', label: 'Resources' },
+    { key: 'activity', label: 'Activity' },
+    { key: 'settings', label: 'Settings' },
+  ];
+
+  const summary = typeof systemSummary === 'string' ? null : systemSummary;
+  const users = summary?.risk_summary?.users || [];
+  const avgRisk = users.length
+    ? Math.round(users.reduce((acc, item) => acc + (item.risk_score || 0), 0) / users.length)
+    : 0;
+
+  const userColumns = [
+    { title: 'User', dataIndex: 'username', key: 'username' },
+    { title: 'Masked Email', dataIndex: 'email', key: 'email' },
+    { title: 'Roles', dataIndex: 'roles', key: 'roles', render: (roles) => <Space wrap>{roles.map((role) => <Tag key={role}>{role}</Tag>)}</Space> },
+    { title: 'Last IP', dataIndex: 'lastIp', key: 'lastIp' },
+    { title: 'Status', dataIndex: 'active', key: 'active', render: (active) => <Tag color={active ? 'green' : 'red'}>{active ? 'Active' : 'Disabled'}</Tag> },
+  ];
+
+  const activityColumns = [
+    { title: 'Action', dataIndex: 'action', key: 'action' },
+    { title: 'Target', dataIndex: 'target', key: 'target' },
+    { title: 'Status', dataIndex: 'status', key: 'status', render: (status) => <Tag color={status === 'success' ? 'green' : status === 'failed' ? 'red' : 'blue'}>{status}</Tag> },
+    { title: 'Detail', dataIndex: 'detail', key: 'detail', ellipsis: true },
+  ];
+
+  const eventColumns = [
+    { title: 'Email', dataIndex: 'email', key: 'email' },
+    { title: 'IP', dataIndex: 'ip', key: 'ip' },
+    { title: 'Type', dataIndex: 'type', key: 'type' },
+    { title: 'Outcome', dataIndex: 'outcome', key: 'outcome', render: (outcome) => <Tag color={outcome === 'success' ? 'green' : outcome === 'blocked' ? 'red' : 'gold'}>{outcome}</Tag> },
+    { title: 'Risk', dataIndex: 'risk', key: 'risk' },
+  ];
+
+  const riskColumns = [
+    { title: 'Email', dataIndex: 'email', key: 'email' },
+    { title: 'Level', dataIndex: 'level', key: 'level', render: (level) => <Tag color={level === 'high' ? 'red' : level === 'medium' ? 'gold' : 'green'}>{level}</Tag> },
+    { title: 'Risk Score', dataIndex: 'score', key: 'score' },
+    { title: 'Failed', dataIndex: 'failedAttempts', key: 'failedAttempts' },
+    { title: 'Blocked', dataIndex: 'blockedAttempts', key: 'blockedAttempts' },
+    { title: 'Recent IPs', dataIndex: 'recentIps', key: 'recentIps' },
+  ];
+
+  return (
+    <Layout className="antd-console-layout">
+      <Sider width={248} theme="dark" className="antd-console-sider">
+        <div className="console-sider-brand">
+          <Avatar shape="square" size={42} style={{ background: '#173da6', fontWeight: 700 }}>SA</Avatar>
+          <div>
+            <div className="section-label section-label--dark">Platform</div>
+            <div className="console-sider-title">SecureAccessAI</div>
+          </div>
+        </div>
+        <Menu theme="dark" mode="inline" selectedKeys={[activePage]} items={menuItems} onClick={({ key }) => setActivePage(key)} />
+        <div className="console-sider-footer">
+          <Text className="console-sider-copy">Application security workspace with room for future network security controls.</Text>
+        </div>
+      </Sider>
+      <Layout>
+        <Header className="antd-console-header">
+          <div className="header-search-shell">
+            <SearchOutlined />
+            <span>Search users, IPs, audit actions, and risk signals</span>
+          </div>
+          <Space size={12}>
+            <Button type="primary">Create</Button>
+            <Tag color="blue">Ready for demo</Tag>
+            <Avatar icon={<UserOutlined />} />
+          </Space>
+        </Header>
+        <Content className="antd-console-content">
+          <div className="console-page-head">
+            <div>
+              <Text className="section-label">Application security platform</Text>
+              <Title level={2} style={{ marginTop: 4, marginBottom: 8 }}>SecureAccessAI Dashboard</Title>
+              <Text type="secondary">Signed in as {currentUserEmail}. Password plus authenticator login is active for this workspace.</Text>
+            </div>
+            <Space wrap>
+              <Button icon={<DatabaseOutlined />} onClick={() => handleAction('me')}>Refresh Access</Button>
+              <Button type="primary" icon={<RadarChartOutlined />} onClick={() => handleAction('dashboard')}>Refresh Dashboard</Button>
+              <Button danger onClick={() => handleSignOut(true)}>Sign Out</Button>
+            </Space>
+          </div>
+
+          <Tabs activeKey={activePage} items={topTabs} onChange={setActivePage} />
+
+          {activePage === 'resources' && (
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <Row gutter={[16, 16]}>
+                <Col xs={24} md={12} xl={6}><Card><Statistic title="Users" value={metrics.users} prefix={<TeamOutlined />} /></Card></Col>
+                <Col xs={24} md={12} xl={6}><Card><Statistic title="Security Events" value={metrics.securityEvents} prefix={<SecurityScanOutlined />} /></Card></Col>
+                <Col xs={24} md={12} xl={6}><Card><Statistic title="Audit Logs" value={metrics.auditLogs} prefix={<AuditOutlined />} /></Card></Col>
+                <Col xs={24} md={12} xl={6}><Card><Statistic title="High Risk" value={metrics.highRisk} valueStyle={{ color: metrics.highRisk ? '#dc2626' : '#16a34a' }} prefix={<SafetyCertificateOutlined />} /></Card></Col>
+              </Row>
+
+              <Row gutter={[16, 16]}>
+                <Col xs={24} xl={8}>
+                  <Card title="Risk Posture" extra={<Tag color={metrics.highRisk ? 'red' : 'green'}>{metrics.highRisk ? 'Attention needed' : 'Stable'}</Tag>}>
+                    <div className="chart-center-wrap">
+                      <Progress type="dashboard" percent={Math.min(avgRisk, 100)} status={riskStatusTone(metrics.highRisk)} />
+                      <div className="chart-copy">
+                        <div className="chart-big">{avgRisk}</div>
+                        <div className="chart-small">Average risk score</div>
+                      </div>
+                    </div>
+                  </Card>
+                </Col>
+                <Col xs={24} xl={16}>
+                  <Card title="Risk Summary" extra={<Button size="small" onClick={() => handleAction('risk-summary')}>Load latest</Button>}>
+                    <Table columns={riskColumns} dataSource={riskRows} pagination={false} size="small" scroll={{ x: 720 }} locale={{ emptyText: 'Load Risk Summary to populate this table.' }} />
+                  </Card>
+                </Col>
+              </Row>
+
+              <Card title="Identity Inventory" extra={<Button size="small" onClick={() => handleAction('users')}>Load users</Button>}>
+                <Table columns={userColumns} dataSource={usersRows} pagination={{ pageSize: 6 }} size="middle" scroll={{ x: 860 }} />
+              </Card>
+            </Space>
+          )}
+
+          {activePage === 'activity' && (
+            <Space direction="vertical" size={16} style={{ width: '100%' }}>
+              <Alert type={responseTag(message)} showIcon message={message} />
+              <Row gutter={[16, 16]}>
+                <Col xs={24} xl={12}>
+                  <Card title="Security Event Feed" extra={<Button size="small" onClick={() => handleAction('security-events')}>Refresh</Button>}>
+                    <Table columns={eventColumns} dataSource={eventRows} pagination={{ pageSize: 5 }} size="small" scroll={{ x: 760 }} locale={{ emptyText: 'Load Security Events to populate this table.' }} />
+                  </Card>
+                </Col>
+                <Col xs={24} xl={12}>
+                  <Card title="Audit Trail" extra={<Button size="small" onClick={() => handleAction('audit-logs')}>Refresh</Button>}>
+                    <Table columns={activityColumns} dataSource={auditRows} pagination={{ pageSize: 5 }} size="small" scroll={{ x: 760 }} locale={{ emptyText: 'Load Audit Logs to populate this table.' }} />
+                  </Card>
+                </Col>
+              </Row>
+              <Row gutter={[16, 16]}>
+                <Col xs={24} xl={12}>
+                  <Card title="Latest API response"><pre className="json-block">{response}</pre></Card>
+                </Col>
+                <Col xs={24} xl={12}>
+                  <Card title="Current user and session">
+                    <Descriptions size="small" column={1} bordered>
+                      <Descriptions.Item label="Operator">{currentUserEmail}</Descriptions.Item>
+                      <Descriptions.Item label="Session token"><span className="mono-inline">{maskToken(token)}</span></Descriptions.Item>
+                      <Descriptions.Item label="Current user payload"><pre className="json-block json-block--compact">{prettyJson(currentUser)}</pre></Descriptions.Item>
+                    </Descriptions>
+                  </Card>
+                </Col>
+              </Row>
+            </Space>
+          )}
+
+          {activePage === 'settings' && (
+            <Row gutter={[16, 16]}>
+              <Col xs={24} xl={10}>
+                <Card title="Assign role" extra={<Tag color="blue">RBAC</Tag>}>
+                  <Form layout="vertical" onFinish={handleAssignRole}>
+                    <Form.Item label="User email">
+                      <Input value={roleForm.email} onChange={(event) => setRoleForm((prev) => ({ ...prev, email: event.target.value }))} prefix={<UserOutlined />} placeholder="peer@example.com" />
+                    </Form.Item>
+                    <Form.Item label="Role">
+                      <Input value={roleForm.role} onChange={(event) => setRoleForm((prev) => ({ ...prev, role: event.target.value }))} prefix={<KeyOutlined />} placeholder="admin" />
+                    </Form.Item>
+                    <Button type="primary" htmlType="submit">Assign Role</Button>
+                  </Form>
+                </Card>
+              </Col>
+              <Col xs={24} xl={10}>
+                <Card title="Delete temporary user" extra={<Tag color="red">Governance</Tag>}>
+                  <Form layout="vertical" onFinish={handleDeleteUser}>
+                    <Form.Item label="User ID">
+                      <Input value={deleteUserId} onChange={(event) => setDeleteUserId(event.target.value)} prefix={<DeleteOutlined />} placeholder="Load users first" />
+                    </Form.Item>
+                    <Space>
+                      <Button onClick={() => handleAction('users')}>Load Users</Button>
+                      <Button danger type="primary" htmlType="submit">Delete User</Button>
+                    </Space>
+                  </Form>
+                </Card>
+              </Col>
+              <Col xs={24} xl={4}>
+                <Card title="Governance defaults">
+                  <List
+                    size="small"
+                    dataSource={[
+                      'PII masking enabled by default',
+                      'Password + second factor required',
+                      'Audit trail retains masked IP context',
+                      'Network security module reserved for future expansion',
+                    ]}
+                    renderItem={(item) => <List.Item>{item}</List.Item>}
+                  />
+                </Card>
+              </Col>
+            </Row>
+          )}
+        </Content>
+      </Layout>
+    </Layout>
+  );
 }
 
 export function App() {
   const [token, setToken] = useState(getStoredToken());
   const [activePage, setActivePage] = useState('resources');
   const [message, setMessage] = useState('Ready.');
-  const [response, setResponse] = useState('No response yet.');
+  const [response, setResponse] = useState(DEFAULT_RESPONSE_MESSAGE);
   const [currentUser, setCurrentUser] = useState('No user loaded.');
-  const [systemSummary, setSystemSummary] = useState('Dashboard summary not loaded yet.');
-  const [usersPayload, setUsersPayload] = useState('Load users to view masked email, roles, and recent IP information.');
+  const [systemSummary, setSystemSummary] = useState(DEFAULT_SYSTEM_MESSAGE);
+  const [usersPayload, setUsersPayload] = useState(DEFAULT_USERS_MESSAGE);
   const [latestCode, setLatestCode] = useState('No code issued yet.');
   const [metrics, setMetrics] = useState({ users: 0, securityEvents: 0, auditLogs: 0, highRisk: 0 });
   const [loginForm, setLoginForm] = useState({ email: bootstrap.demoAdminEmail || '', password: bootstrap.demoAdminPassword || '' });
@@ -105,8 +561,6 @@ export function App() {
   const [deleteUserId, setDeleteUserId] = useState('');
 
   const isDashboardRoute = bootstrap.pageMode === 'dashboard';
-  const isLoggedIn = Boolean(token);
-  const totpSetupConfigured = Boolean(bootstrap.demoTotpEnabled && bootstrap.demoTotpQrDataUrl);
 
   const currentUserEmail = useMemo(() => {
     if (!currentUser || typeof currentUser === 'string') return bootstrap.demoAdminEmail || 'operator@example.com';
@@ -155,7 +609,6 @@ export function App() {
     }
   }
 
-
   async function requestLoginCode(payload = loginForm) {
     try {
       const data = await apiRequest('/api/auth/login', { method: 'POST', body: payload });
@@ -171,8 +624,7 @@ export function App() {
     }
   }
 
-  async function handleVerifyCode(event) {
-    event.preventDefault();
+  async function handleVerifyCode() {
     try {
       const data = await apiRequest('/api/auth/verify-code', { method: 'POST', body: verifyForm });
       saveToken(data.access_token);
@@ -219,8 +671,7 @@ export function App() {
     }
   }
 
-  async function handleAssignRole(event) {
-    event.preventDefault();
+  async function handleAssignRole() {
     try {
       const data = await apiRequest('/api/rbac/assign-role', { method: 'POST', body: roleForm, token });
       setMessage('Role assignment succeeded.');
@@ -232,8 +683,7 @@ export function App() {
     }
   }
 
-  async function handleDeleteUser(event) {
-    event.preventDefault();
+  async function handleDeleteUser() {
     if (!deleteUserId) return;
     try {
       const data = await apiRequest(`/api/admin/users/${deleteUserId}`, { method: 'DELETE', token });
@@ -252,19 +702,18 @@ export function App() {
       try {
         await apiRequest('/api/auth/logout', { method: 'POST', token });
       } catch {
-        // Ignore logout cleanup failures.
       }
     }
     saveToken('');
     setToken('');
     setCurrentUser('No user loaded.');
-    setSystemSummary('Dashboard summary not loaded yet.');
-    setUsersPayload('Load users to view masked email, roles, and recent IP information.');
+    setSystemSummary(DEFAULT_SYSTEM_MESSAGE);
+    setUsersPayload(DEFAULT_USERS_MESSAGE);
     setMetrics({ users: 0, securityEvents: 0, auditLogs: 0, highRisk: 0 });
     setLatestCode('No code issued yet.');
     setVerifyForm({ challenge_id: '', code: '' });
     setMessage('Signed out.');
-    setResponse('No response yet.');
+    setResponse(DEFAULT_RESPONSE_MESSAGE);
     window.location.assign('/');
   }
 
@@ -273,302 +722,43 @@ export function App() {
     setMessage('Seeded access credentials copied into the sign-in form.');
   }
 
-  const renderResources = () => (
-    <div className="page-grid">
-      <section className="hero-strip">
-        <div>
-          <p className="eyebrow">Application security platform</p>
-          <h1>SecureAccessAI Console</h1>
-          <p className="hero-copy">
-            Authentication, RBAC, audit evidence, risk scoring, and an extension lane for future network security controls.
-          </p>
-        </div>
-        <div className="hero-strip__actions">
-          <ActionButton tone="secondary" onClick={() => handleAction('me')}>Refresh Access</ActionButton>
-          <ActionButton onClick={() => handleAction('dashboard')}>Refresh Dashboard</ActionButton>
-        </div>
-      </section>
-
-      <section className="metrics-grid">
-        <MetricCard label="Users" value={metrics.users} hint="Registered identities" />
-        <MetricCard label="Security Events" value={metrics.securityEvents} hint="Threat feed items" />
-        <MetricCard label="Audit Logs" value={metrics.auditLogs} hint="Tracked admin actions" />
-        <MetricCard label="High Risk" value={metrics.highRisk} hint="Need review" tone="alert" />
-      </section>
-
-      <section className="two-column-grid">
-        <Panel
-          eyebrow="Operations"
-          title="Security actions"
-          actions={
-            <div className="inline-actions">
-              <ActionButton onClick={() => handleAction('security-events')}>Security Events</ActionButton>
-              <ActionButton tone="secondary" onClick={() => handleAction('risk-summary')}>Risk Summary</ActionButton>
-            </div>
-          }
-        >
-          <div className="button-stack">
-            <ActionButton tone="secondary" onClick={() => handleAction('users')}>Load Users</ActionButton>
-            <ActionButton tone="secondary" onClick={() => handleAction('audit-logs')}>Audit Logs</ActionButton>
-            <ActionButton tone="secondary" onClick={() => setActivePage('settings')}>Open Governance</ActionButton>
-            <ActionButton tone="ghost" onClick={() => handleSignOut(true)}>Sign Out</ActionButton>
-          </div>
-        </Panel>
-
-        <Panel eyebrow="Current session" title={currentUserEmail}>
-          <div className="session-stack">
-            <div>
-              <span className="mini-label">Session token</span>
-              <CodeBlock>{maskToken(token)}</CodeBlock>
-            </div>
-            <div>
-              <span className="mini-label">Current user</span>
-              <CodeBlock>{typeof currentUser === 'string' ? currentUser : JSON.stringify(currentUser, null, 2)}</CodeBlock>
-            </div>
-          </div>
-        </Panel>
-      </section>
-
-      <section className="single-panel-grid">
-        <Panel eyebrow="Network extension" title="Reserved lane for network security">
-          <div className="extension-grid">
-            <div><strong>Traffic anomalies</strong><span>Ingress and egress monitoring.</span></div>
-            <div><strong>Asset inventory</strong><span>Hosts, ports, and exposure visibility.</span></div>
-            <div><strong>Vulnerability feed</strong><span>CVE ingestion and remediation queue.</span></div>
-            <div><strong>Incident response</strong><span>Escalation and containment hooks.</span></div>
-          </div>
-        </Panel>
-      </section>
-    </div>
-  );
-
-  const renderActivity = () => (
-    <div className="page-grid">
-      <section className="two-column-grid">
-        <Panel eyebrow="Operator" title="Message log">
-          <CodeBlock>{message}</CodeBlock>
-        </Panel>
-        <Panel eyebrow="API trace" title="Latest response">
-          <CodeBlock>{response}</CodeBlock>
-        </Panel>
-      </section>
-      <section className="two-column-grid">
-        <Panel eyebrow="System summary" title="Dashboard state">
-          <CodeBlock>{typeof systemSummary === 'string' ? systemSummary : JSON.stringify(systemSummary, null, 2)}</CodeBlock>
-        </Panel>
-        <Panel eyebrow="Inventory" title="User list">
-          <CodeBlock>{typeof usersPayload === 'string' ? usersPayload : JSON.stringify(usersPayload, null, 2)}</CodeBlock>
-        </Panel>
-      </section>
-    </div>
-  );
-
-  const renderSettings = () => (
-    <div className="page-grid">
-      <section className="two-column-grid">
-        <Panel eyebrow="Identity" title="Assign role">
-          <form className="form-grid" onSubmit={handleAssignRole}>
-            <label>
-              User email
-              <input value={roleForm.email} onChange={(event) => setRoleForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="peer@example.com" />
-            </label>
-            <label>
-              Role
-              <input value={roleForm.role} onChange={(event) => setRoleForm((prev) => ({ ...prev, role: event.target.value }))} placeholder="admin" />
-            </label>
-            <ActionButton type="submit">Assign Role</ActionButton>
-          </form>
-        </Panel>
-
-        <Panel eyebrow="Governance" title="Delete temporary user">
-          <form className="form-grid" onSubmit={handleDeleteUser}>
-            <label>
-              User ID
-              <input value={deleteUserId} onChange={(event) => setDeleteUserId(event.target.value)} placeholder="Load users first" />
-            </label>
-            <div className="inline-actions">
-              <ActionButton tone="secondary" type="button" onClick={() => handleAction('users')}>Load Users</ActionButton>
-              <ActionButton type="submit">Delete User</ActionButton>
-            </div>
-          </form>
-        </Panel>
-      </section>
-
-      <section className="single-panel-grid">
-        <Panel eyebrow="Data governance" title="Protection defaults">
-          <ul className="policy-list">
-            <li>Admin feeds mask personal identifiers by default.</li>
-            <li>Time-limited verification codes are required before token issue.</li>
-            <li>Audit trails preserve IP context while reducing unnecessary exposure.</li>
-            <li>Future network evidence will follow the same privacy-aware handling model.</li>
-          </ul>
-        </Panel>
-      </section>
-    </div>
-  );
-
   if (!isDashboardRoute) {
     return (
-      <div className="login-shell">
-        <aside className="login-side">
-          <div className="brand-pill">SA</div>
-          <p className="eyebrow">SecureAccessAI</p>
-          <h1>Application security console</h1>
-          <p className="hero-copy">
-            Sign in with password and a time-limited code, then enter the operations console for audit, threat monitoring, and governance controls.
-          </p>
-          <div className="login-side__cards">
-            <div>
-              <strong>Authentication</strong>
-              <span>Password + verification code.</span>
-            </div>
-            <div>
-              <strong>Control plane</strong>
-              <span>RBAC, audit logs, risk summary.</span>
-            </div>
-            <div>
-              <strong>Extension ready</strong>
-              <span>Prepared for network security modules.</span>
-            </div>
-          </div>
-        </aside>
-
-        <main className="login-main">
-          <section className="login-grid login-grid--compact">
-            <Panel eyebrow="Sign in" title="Request verification code">
-              <form className="form-grid" onSubmit={(event) => { event.preventDefault(); requestLoginCode(); }}>
-                <label>
-                  Email
-                  <input value={loginForm.email} onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="lead@example.com" />
-                </label>
-                <label>
-                  Password
-                  <input type="password" value={loginForm.password} onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Pass1234!" />
-                </label>
-                <ActionButton type="submit" disabled={!loginForm.email || !loginForm.password}>Request Code</ActionButton>
-              </form>
-            </Panel>
-
-            <Panel eyebrow="Verify" title="Complete sign-in">
-              <form className="form-grid" onSubmit={handleVerifyCode}>
-                <label>
-                  Challenge ID
-                  <input value={verifyForm.challenge_id} onChange={(event) => setVerifyForm((prev) => ({ ...prev, challenge_id: event.target.value }))} placeholder="Auto-filled after login" />
-                </label>
-                <label>
-                  Code
-                  <input value={verifyForm.code} onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))} placeholder="6-digit code" />
-                </label>
-                <ActionButton type="submit" disabled={!verifyForm.challenge_id || !verifyForm.code}>Verify and Open Console</ActionButton>
-              </form>
-              <div className="code-strip">
-                <span className="mini-label">Authenticator / fallback code</span>
-                <CodeBlock>{latestCode}</CodeBlock>
-              </div>
-            </Panel>
-
-            <Panel eyebrow="Seeded access" title="Quick operator login">
-              <div className="seeded-card">
-                <p><span>Username</span><code>{bootstrap.demoAdminUsername || 'demo-admin'}</code></p>
-                <p><span>Email</span><code>{bootstrap.demoAdminEmail || 'Not configured'}</code></p>
-                <p><span>Password</span><code>{bootstrap.demoAdminPassword || 'Not configured'}</code></p>
-              </div>
-              <div className="inline-actions">
-                <ActionButton tone="secondary" onClick={fillSeededAccess}>Use Seeded Access</ActionButton>
-                <ActionButton onClick={() => requestLoginCode({ email: bootstrap.demoAdminEmail, password: bootstrap.demoAdminPassword })} disabled={!bootstrap.demoAdminEmail || !bootstrap.demoAdminPassword}>Request Code</ActionButton>
-              </div>
-            </Panel>
-
-            {totpSetupConfigured ? (
-              <Panel eyebrow="Authenticator setup" title="Scan once with your phone">
-                <div className="totp-setup">
-                  <img className="totp-qr" src={bootstrap.demoTotpQrDataUrl} alt="Authenticator QR code" />
-                  <div className="totp-copy">
-                    <p>
-                      Scan this QR code with Microsoft Authenticator or Google Authenticator, then request a login challenge and enter the 6-digit code from your phone.
-                    </p>
-                    <div className="seeded-card seeded-card--compact">
-                      <p><span>Issuer</span><code>{bootstrap.demoTotpIssuer || 'SecureAccessAI'}</code></p>
-                      <p><span>Account</span><code>{bootstrap.demoTotpAccount || bootstrap.demoAdminEmail || 'demo-admin@example.com'}</code></p>
-                      <p><span>Manual secret</span><code>{bootstrap.demoTotpSecret || 'Not configured'}</code></p>
-                    </div>
-                  </div>
-                </div>
-              </Panel>
-            ) : null}
-          </section>
-
-          <section className="status-row status-row--single">
-            <Panel eyebrow="Status" title="Authentication status">
-              <CodeBlock>{message}</CodeBlock>
-            </Panel>
-          </section>
-        </main>
-      </div>
+      <LoginPage
+        loginForm={loginForm}
+        setLoginForm={setLoginForm}
+        verifyForm={verifyForm}
+        setVerifyForm={setVerifyForm}
+        latestCode={latestCode}
+        message={message}
+        response={response}
+        requestLoginCode={requestLoginCode}
+        handleVerifyCode={handleVerifyCode}
+        fillSeededAccess={fillSeededAccess}
+      />
     );
   }
 
   return (
-    <div className="console-shell">
-      <aside className="console-sidebar">
-        <div className="console-sidebar__brand">
-          <div className="brand-pill brand-pill--small">SA</div>
-          <div>
-            <p className="eyebrow">Platform</p>
-            <h2>SecureAccessAI</h2>
-          </div>
-        </div>
-        <nav className="console-nav">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              className={item.id === activePage ? 'console-nav__item is-active' : 'console-nav__item'}
-              onClick={() => setActivePage(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
-        <div className="console-sidebar__subnav">
-          <p className="menu-heading">Manage</p>
-          {RESOURCE_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              className={activePage === 'resources' ? 'console-subnav__item is-active' : 'console-subnav__item'}
-              onClick={() => setActivePage(item.id === 'network' ? 'resources' : 'resources')}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      </aside>
-
-      <main className="console-main">
-        <header className="console-topbar">
-          <div className="console-search">Search users, IPs, actions, and risk signals</div>
-          <div className="console-topbar__actions">
-            <ActionButton>Create</ActionButton>
-            <div className="tenant-chip">Kale Health Tenant</div>
-            <div className="operator-chip">{currentUserEmail}</div>
-          </div>
-        </header>
-
-        <section className="console-tabs">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.id}
-              className={item.id === activePage ? 'console-tabs__item is-active' : 'console-tabs__item'}
-              onClick={() => setActivePage(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </section>
-
-        {activePage === 'resources' ? renderResources() : null}
-        {activePage === 'activity' ? renderActivity() : null}
-        {activePage === 'settings' ? renderSettings() : null}
-      </main>
-    </div>
+    <AppDashboard
+      activePage={activePage}
+      setActivePage={setActivePage}
+      message={message}
+      response={response}
+      currentUser={currentUser}
+      currentUserEmail={currentUserEmail}
+      systemSummary={systemSummary}
+      usersPayload={usersPayload}
+      metrics={metrics}
+      token={token}
+      handleAction={handleAction}
+      handleAssignRole={handleAssignRole}
+      handleDeleteUser={handleDeleteUser}
+      handleSignOut={handleSignOut}
+      roleForm={roleForm}
+      setRoleForm={setRoleForm}
+      deleteUserId={deleteUserId}
+      setDeleteUserId={setDeleteUserId}
+    />
   );
 }
