@@ -425,7 +425,7 @@ def test_demo_ui_page_renders(client):
 def test_demo_alias_page_renders(client):
     response = client.get("/demo")
     assert response.status_code == 200
-    assert b"Login Demo Page" in response.data
+    assert b"Secure Access Demo" in response.data
 
 
 def test_demo_admin_seeded_account_can_complete_demo_login_flow():
@@ -502,3 +502,10 @@ def test_audit_logs_include_masked_ip_detail(client):
     details = [log["detail"] for log in logs.get_json()["logs"] if log.get("detail")]
     assert any("ip=" in detail for detail in details)
     assert any("***" in detail for detail in details)
+
+
+def test_demo_page_includes_dashboard_shell(client):
+    response = client.get("/demo")
+    assert response.status_code == 200
+    assert b"Security Dashboard" in response.data
+    assert b"dashboard-shell" in response.data

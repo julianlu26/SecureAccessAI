@@ -1,14 +1,24 @@
 const tokenKey = "secureaccessai_demo_token";
 
+const authShell = document.getElementById("auth-shell");
+const dashboardShell = document.getElementById("dashboard-shell");
+const globalStatusChip = document.getElementById("global-status-chip");
 const messageBox = document.getElementById("message-box");
 const responseBox = document.getElementById("response-box");
 const usersBox = document.getElementById("users-box");
+const systemSummaryBox = document.getElementById("system-summary-box");
+const currentUserBox = document.getElementById("current-user-box");
 const tokenPreview = document.getElementById("token-preview");
 const sessionStatus = document.getElementById("session-status");
 const challengeInput = document.getElementById("challenge-id");
 const loginForm = document.getElementById("login-form");
 const demoAdminEmail = document.body.dataset.demoAdminEmail || "";
 const demoAdminPassword = document.body.dataset.demoAdminPassword || "";
+
+const metricUserCount = document.getElementById("metric-user-count");
+const metricSecurityEventCount = document.getElementById("metric-security-event-count");
+const metricAuditLogCount = document.getElementById("metric-audit-log-count");
+const metricHighRiskCount = document.getElementById("metric-high-risk-count");
 
 function getToken() {
   return localStorage.getItem(tokenKey) || "";
@@ -25,8 +35,12 @@ function setToken(token) {
 
 function syncSessionView() {
   const token = getToken();
-  sessionStatus.textContent = token ? "Logged in" : "Logged out";
-  tokenPreview.textContent = token ? `${token.slice(0, 48)}...` : "No token";
+  const loggedIn = Boolean(token);
+  sessionStatus.textContent = loggedIn ? "Logged in" : "Logged out";
+  tokenPreview.textContent = loggedIn ? `${token.slice(0, 48)}...` : "No token";
+  authShell.classList.toggle("hidden", loggedIn);
+  dashboardShell.classList.toggle("hidden", !loggedIn);
+  globalStatusChip.textContent = loggedIn ? "Dashboard active" : "Ready for demo";
 }
 
 function showMessage(text) {
@@ -41,9 +55,27 @@ function showUsers(payload) {
   usersBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
 }
 
+function showSystemSummary(payload) {
+  systemSummaryBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+}
+
+function showCurrentUser(payload) {
+  currentUserBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+}
+
 function setLoginFields(email, password) {
   loginForm.elements.email.value = email;
   loginForm.elements.password.value = password;
+}
+
+function updateDashboardMetrics(usersPayload, dashboardPayload) {
+  const users = usersPayload?.users || [];
+  const systemSummary = dashboardPayload?.system_summary || {};
+  const riskUsers = dashboardPayload?.risk_summary?.users || [];
+  metricUserCount.textContent = String(users.length);
+  metricSecurityEventCount.textContent = String(systemSummary.security_event_count || 0);
+  metricAuditLogCount.textContent = String(systemSummary.audit_log_count || 0);
+  metricHighRiskCount.textContent = String(riskUsers.filter((user) => user.risk_level === "high").length);
 }
 
 async function request(path, {method = "GET", body = null, auth = false} = {}) {
@@ -93,6 +125,7 @@ async function loginWithPayload(payload) {
       showMessage(`Login code issued. Verify the one-time code to finish sign-in.${demoCode}`);
     } else if (data.access_token) {
       setToken(data.access_token);
+      await bootstrapDashboard();
       showMessage("Login succeeded.");
     }
     showResponse(data);
@@ -116,7 +149,8 @@ async function handleVerifyCode(event) {
   try {
     const data = await request("/api/auth/verify-code", {method: "POST", body: payload});
     setToken(data.access_token);
-    showMessage("Verification succeeded. Session token issued.");
+    await bootstrapDashboard();
+    showMessage("Verification succeeded. Dashboard loaded.");
     showResponse(data);
   } catch (error) {
     showMessage(`Verification failed (${error.status || "error"}).`);
@@ -132,6 +166,7 @@ async function handleAssignRole(event) {
     const data = await request("/api/rbac/assign-role", {method: "POST", body: payload, auth: true});
     showMessage("Role assignment succeeded.");
     showResponse(data);
+    await bootstrapDashboard();
   } catch (error) {
     showMessage(`Role assignment failed (${error.status || "error"}).`);
     showResponse(error.data || error);
@@ -139,15 +174,44 @@ async function handleAssignRole(event) {
 }
 
 async function loadUsers() {
+  const data = await request("/api/admin/users", {method: "GET", auth: true});
+  showUsers(data);
+  return data;
+}
+
+async function loadMe() {
+  const data = await request("/api/auth/me", {method: "GET", auth: true});
+  showCurrentUser(data);
+  return data;
+}
+
+async function loadDashboardOverview() {
+  const data = await request("/api/admin/dashboard", {method: "GET", auth: true});
+  showSystemSummary(data);
+  return data;
+}
+
+async function bootstrapDashboard() {
   try {
-    const data = await request("/api/admin/users", {method: "GET", auth: true});
-    showMessage("Loaded users.");
-    showResponse(data);
-    showUsers(data);
+    const [meData, dashboardData, usersData] = await Promise.all([
+      loadMe(),
+      loadDashboardOverview(),
+      loadUsers(),
+    ]);
+    updateDashboardMetrics(usersData, dashboardData);
+    showMessage(`Dashboard ready for ${meData.email}.`);
   } catch (error) {
-    showMessage(`Loading users failed (${error.status || "error"}).`);
+    if (error.status === 401) {
+      setToken("");
+      showCurrentUser("Session expired.");
+      showUsers("Load users to view masked email, roles, and recent IP information.");
+      showSystemSummary("Dashboard summary not loaded yet.");
+      showMessage("Session expired. Please log in again.");
+      showResponse(error.data || error);
+      return;
+    }
+    showMessage(`Dashboard load failed (${error.status || "error"}).`);
     showResponse(error.data || error);
-    showUsers(error.data || error);
   }
 }
 
@@ -159,7 +223,7 @@ async function handleDeleteUser(event) {
     const data = await request(`/api/admin/users/${userId}`, {method: "DELETE", auth: true});
     showMessage("User deletion succeeded.");
     showResponse(data);
-    await loadUsers();
+    await bootstrapDashboard();
   } catch (error) {
     showMessage(`User deletion failed (${error.status || "error"}).`);
     showResponse(error.data || error);
@@ -167,19 +231,14 @@ async function handleDeleteUser(event) {
 }
 
 async function runAction(action) {
-  const routes = {
-    me: ["/api/auth/me", "GET"],
-    dashboard: ["/api/admin/dashboard", "GET"],
-    users: ["/api/admin/users", "GET"],
-    "security-events": ["/api/admin/security-events", "GET"],
-    "audit-logs": ["/api/admin/audit-logs", "GET"],
-    "risk-summary": ["/api/admin/risk-summary", "GET"],
-  };
-
   if (action === "logout") {
     try {
       const data = await request("/api/auth/logout", {method: "POST", auth: true});
       setToken("");
+      showCurrentUser("No user loaded.");
+      showUsers("Load users to view masked email, roles, and recent IP information.");
+      showSystemSummary("Dashboard summary not loaded yet.");
+      updateDashboardMetrics({users: []}, {system_summary: {}, risk_summary: {users: []}});
       showMessage("Logged out.");
       showResponse(data);
     } catch (error) {
@@ -189,20 +248,28 @@ async function runAction(action) {
     return;
   }
 
-  if (action === "users") {
-    await loadUsers();
-    return;
-  }
-
-  const route = routes[action];
-  if (!route) {
-    return;
-  }
-
   try {
-    const data = await request(route[0], {method: route[1], auth: true});
-    showMessage(`Loaded ${action}.`);
-    showResponse(data);
+    let data;
+    if (action === "me") {
+      data = await loadMe();
+    } else if (action === "dashboard") {
+      data = await loadDashboardOverview();
+      const usersData = await loadUsers();
+      updateDashboardMetrics(usersData, data);
+    } else if (action === "users") {
+      data = await loadUsers();
+    } else if (action === "security-events") {
+      data = await request("/api/admin/security-events", {method: "GET", auth: true});
+    } else if (action === "audit-logs") {
+      data = await request("/api/admin/audit-logs", {method: "GET", auth: true});
+    } else if (action === "risk-summary") {
+      data = await request("/api/admin/risk-summary", {method: "GET", auth: true});
+    }
+
+    if (data) {
+      showMessage(`Loaded ${action}.`);
+      showResponse(data);
+    }
   } catch (error) {
     showMessage(`Request failed for ${action} (${error.status || "error"}).`);
     showResponse(error.data || error);
@@ -239,3 +306,6 @@ document.querySelectorAll("[data-action]").forEach((button) => {
 
 wireDemoLoginButtons();
 syncSessionView();
+if (getToken()) {
+  bootstrapDashboard();
+}
