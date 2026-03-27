@@ -336,7 +336,7 @@ function OverviewSection({ metrics, systemSummary, riskRows, auditRows, eventRow
   );
 }
 
-function IdentitySection({ currentUser, currentUserEmail, token, usersRows, roleForm, setRoleForm, deleteUserId, setDeleteUserId, handleAssignRole, handleDeleteUser, refreshUsers }) {
+function IdentitySection({ currentUser, currentUserEmail, token, usersRows, createUserForm, setCreateUserForm, roleForm, setRoleForm, deleteUserId, setDeleteUserId, handleCreateUser, handleAssignRole, handleDeleteUser, refreshUsers }) {
   const userColumns = [
     { title: 'User', dataIndex: 'username', key: 'username' },
     { title: 'Masked Email', dataIndex: 'email', key: 'email' },
@@ -356,7 +356,7 @@ function IdentitySection({ currentUser, currentUserEmail, token, usersRows, role
       </div>
 
       <Row gutter={[16, 16]}>
-        <Col xs={24} xl={10}>
+        <Col xs={24} xl={9}>
           <Card title="Current operator">
             <Descriptions column={1} bordered size="small">
               <Descriptions.Item label="Email">{currentUserEmail}</Descriptions.Item>
@@ -370,7 +370,23 @@ function IdentitySection({ currentUser, currentUserEmail, token, usersRows, role
             </Descriptions>
           </Card>
         </Col>
-        <Col xs={24} xl={7}>
+        <Col xs={24} md={12} xl={5}>
+          <Card title="Create user">
+            <Form layout="vertical" onFinish={handleCreateUser}>
+              <Form.Item label="Username">
+                <Input prefix={<UserOutlined />} value={createUserForm.username} onChange={(event) => setCreateUserForm((prev) => ({ ...prev, username: event.target.value }))} placeholder="new-user" />
+              </Form.Item>
+              <Form.Item label="Email">
+                <Input prefix={<UserOutlined />} value={createUserForm.email} onChange={(event) => setCreateUserForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="new-user@example.com" />
+              </Form.Item>
+              <Form.Item label="Password">
+                <Input.Password value={createUserForm.password} onChange={(event) => setCreateUserForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Create a password" />
+              </Form.Item>
+              <Button type="primary" htmlType="submit" block>Create user</Button>
+            </Form>
+          </Card>
+        </Col>
+        <Col xs={24} md={12} xl={5}>
           <Card title="Assign role">
             <Form layout="vertical" onFinish={handleAssignRole}>
               <Form.Item label="User email">
@@ -383,7 +399,7 @@ function IdentitySection({ currentUser, currentUserEmail, token, usersRows, role
             </Form>
           </Card>
         </Col>
-        <Col xs={24} xl={7}>
+        <Col xs={24} md={12} xl={5}>
           <Card title="Delete user">
             <Form layout="vertical" onFinish={handleDeleteUser}>
               <Form.Item label="User ID">
@@ -601,7 +617,7 @@ function AppDashboard({
   if (activeModule === 'overview') {
     content = <OverviewSection metrics={metrics} systemSummary={systemSummary} riskRows={riskRows} auditRows={auditRows} eventRows={eventRows} refreshAll={handleRefreshAll} />;
   } else if (activeModule === 'identity') {
-    content = <IdentitySection currentUser={currentUser} currentUserEmail={currentUserEmail} token={token} usersRows={usersRows} roleForm={roleForm} setRoleForm={setRoleForm} deleteUserId={deleteUserId} setDeleteUserId={setDeleteUserId} handleAssignRole={handleAssignRole} handleDeleteUser={handleDeleteUser} refreshUsers={handleRefreshUsers} />;
+    content = <IdentitySection currentUser={currentUser} currentUserEmail={currentUserEmail} token={token} usersRows={usersRows} createUserForm={createUserForm} setCreateUserForm={setCreateUserForm} roleForm={roleForm} setRoleForm={setRoleForm} deleteUserId={deleteUserId} setDeleteUserId={setDeleteUserId} handleCreateUser={handleCreateUser} handleAssignRole={handleAssignRole} handleDeleteUser={handleDeleteUser} refreshUsers={handleRefreshUsers} />;
   } else if (activeModule === 'threats') {
     content = <ThreatSection metrics={metrics} eventRows={eventRows} riskRows={riskRows} refreshThreats={handleRefreshThreats} />;
   } else if (activeModule === 'audit') {
@@ -670,6 +686,7 @@ export function App() {
   const [metrics, setMetrics] = useState(INITIAL_METRICS);
   const [loginForm, setLoginForm] = useState({ email: bootstrap.demoAdminEmail || '', password: bootstrap.demoAdminPassword || '' });
   const [verifyForm, setVerifyForm] = useState({ challenge_id: '', code: '' });
+  const [createUserForm, setCreateUserForm] = useState({ username: '', email: '', password: '' });
   const [roleForm, setRoleForm] = useState({ email: '', role: 'admin' });
   const [deleteUserId, setDeleteUserId] = useState('');
 
@@ -800,6 +817,20 @@ export function App() {
     }
   }
 
+  async function handleCreateUser() {
+    try {
+      const data = await apiRequest('/api/auth/register', { method: 'POST', body: createUserForm });
+      setMessage('User created successfully.');
+      setResponse(prettyJson(data));
+      setCreateUserForm({ username: '', email: '', password: '' });
+      setRoleForm((prev) => ({ ...prev, email: data.email || prev.email }));
+      await bootstrapDashboard(token);
+    } catch (error) {
+      setMessage('User creation failed (' + String(error.status || 'error') + ').');
+      setResponse(prettyJson(error.data || error));
+    }
+  }
+
   async function handleAssignRole() {
     try {
       const data = await apiRequest('/api/rbac/assign-role', { method: 'POST', body: roleForm, token });
@@ -880,6 +911,8 @@ export function App() {
       handleAssignRole={handleAssignRole}
       handleDeleteUser={handleDeleteUser}
       handleSignOut={handleSignOut}
+      createUserForm={createUserForm}
+      setCreateUserForm={setCreateUserForm}
       roleForm={roleForm}
       setRoleForm={setRoleForm}
       deleteUserId={deleteUserId}
