@@ -11,6 +11,8 @@ const currentUserBox = document.getElementById("current-user-box");
 const tokenPreview = document.getElementById("token-preview");
 const sessionStatus = document.getElementById("session-status");
 const challengeInput = document.getElementById("challenge-id");
+const codeInput = document.querySelector('#verify-form input[name="code"]');
+const demoCodeBox = document.getElementById("demo-code-box");
 const loginForm = document.getElementById("login-form");
 const pageMode = document.body.dataset.pageMode || "demo";
 const demoAdminEmail = document.body.dataset.demoAdminEmail || "";
@@ -80,6 +82,16 @@ function showCurrentUser(payload) {
   currentUserBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
 }
 
+function showLatestDemoCode(code) {
+  const nextCode = code || "No code issued yet.";
+  if (demoCodeBox) {
+    demoCodeBox.textContent = nextCode;
+  }
+  if (codeInput) {
+    codeInput.value = code || "";
+  }
+}
+
 function setLoginFields(email, password) {
   loginForm.elements.email.value = email;
   loginForm.elements.password.value = password;
@@ -138,9 +150,11 @@ async function loginWithPayload(payload) {
       challengeInput.value = data.challenge_id;
     }
     if (data.mfa_required) {
+      showLatestDemoCode(data.demo_code || "");
       const demoCode = data.demo_code ? ` Demo code: ${data.demo_code}` : "";
       showMessage(`Login code issued. Verify the one-time code to finish sign-in.${demoCode}`);
     } else if (data.access_token) {
+      showLatestDemoCode("");
       setToken(data.access_token);
       goToDashboard();
       showMessage("Login succeeded.");
@@ -165,6 +179,7 @@ async function handleVerifyCode(event) {
   const payload = Object.fromEntries(form.entries());
   try {
     const data = await request("/api/auth/verify-code", {method: "POST", body: payload});
+    showLatestDemoCode(payload.code || "");
     setToken(data.access_token);
     if (pageMode === "dashboard") {
       await bootstrapDashboard();
@@ -256,6 +271,8 @@ async function handleDeleteUser(event) {
 async function runAction(action) {
   if (action === "switch-account") {
     setToken("");
+    challengeInput.value = "";
+    showLatestDemoCode("");
     showCurrentUser("No user loaded.");
     showUsers("Load users to view masked email, roles, and recent IP information.");
     showSystemSummary("Dashboard summary not loaded yet.");
@@ -270,6 +287,8 @@ async function runAction(action) {
     try {
       const data = await request("/api/auth/logout", {method: "POST", auth: true});
       setToken("");
+      challengeInput.value = "";
+      showLatestDemoCode("");
       showCurrentUser("No user loaded.");
       showUsers("Load users to view masked email, roles, and recent IP information.");
       showSystemSummary("Dashboard summary not loaded yet.");
