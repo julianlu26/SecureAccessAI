@@ -1,8 +1,9 @@
 from flask import Flask, jsonify
+import pyotp
 
 from app.config import Config
 from app.extensions import db
-from app.models import Role, User
+from app.models import Role, TotpCredential, User
 from app.routes.admin import admin_bp
 from app.routes.auth import auth_bp
 from app.routes.rbac import rbac_bp
@@ -28,6 +29,7 @@ def create_app(test_config: dict | None = None) -> Flask:
         db.create_all()
         seed_rbac()
         _ensure_demo_admin(app)
+        _ensure_demo_totp(app)
         db.session.commit()
 
     app.register_blueprint(auth_bp)
@@ -65,3 +67,32 @@ def _ensure_demo_admin(app: Flask) -> None:
         user.roles.append(admin_role)
     if user_role and user_role not in user.roles:
         user.roles.append(user_role)
+
+
+def _ensure_demo_totp(app: Flask) -> None:
+    if not app.config.get("DEMO_TOTP_ENABLED", True):
+        return
+
+    email = app.config.get("DEMO_ADMIN_EMAIL", "").strip().lower()
+    if not email:
+        return
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        return
+
+    issuer = app.config.get("DEMO_TOTP_ISSUER", "SecureAccessAI").strip() or "SecureAccessAI"
+    label = email
+    credential = TotpCredential.query.filter_by(user_id=user.id).first()
+    if not credential:
+        credential = TotpCredential(
+            user_id=user.id,
+            issuer=issuer,
+            label=label,
+            secret=pyotp.random_base32(),
+        )
+        db.session.add(credential)
+        return
+
+    credential.issuer = issuer
+    credential.label = label

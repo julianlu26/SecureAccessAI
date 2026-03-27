@@ -1,7 +1,9 @@
 import pytest
+import pyotp
 
 from app import create_app
 from app.config import Config
+from app.models import TotpCredential, User
 from app.services.security_service import RateLimiter
 
 
@@ -21,6 +23,9 @@ def client():
             "RISK_IP_LOOKBACK_HOURS": 24,
             "TRUST_PROXY_HEADERS": True,
             "BOOTSTRAP_ADMIN_EMAIL": "lead@example.com",
+            "DEMO_TOTP_ENABLED": True,
+            "SHOW_DEMO_TOTP_QR": True,
+            "DEMO_TOTP_ISSUER": "SecureAccessAI",
             "MFA_ENABLED": True,
             "MFA_CODE_TTL_SECONDS": 300,
             "MFA_REQUIRE_SAME_IP": True,
@@ -437,6 +442,9 @@ def test_demo_admin_seeded_account_can_complete_demo_login_flow():
             "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
             "SECRET_KEY": "test-secret",
             "TRUST_PROXY_HEADERS": True,
+            "DEMO_TOTP_ENABLED": True,
+            "SHOW_DEMO_TOTP_QR": True,
+            "DEMO_TOTP_ISSUER": "SecureAccessAI",
             "MFA_ENABLED": True,
             "MFA_CODE_TTL_SECONDS": 300,
             "SHOW_DEMO_MFA_CODE": True,
@@ -451,6 +459,7 @@ def test_demo_admin_seeded_account_can_complete_demo_login_flow():
     assert page.status_code == 200
     assert b"window.SECUREACCESS_BOOTSTRAP" in page.data
     assert b"demo-admin@example.com" in page.data
+    assert b"data:image/svg+xml;base64" in page.data
 
     challenge = _start_login(local_client, "demo-admin@example.com", "Pass1234!", ip_address="10.0.3.10")
     assert challenge.status_code == 200
@@ -463,6 +472,42 @@ def test_demo_admin_seeded_account_can_complete_demo_login_flow():
     me = local_client.get("/api/auth/me", headers=_auth_header(token))
     assert me.status_code == 200
     assert "admin" in me.get_json()["roles"]
+
+
+def test_demo_admin_can_verify_with_authenticator_code():
+    RateLimiter.reset()
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret",
+            "TRUST_PROXY_HEADERS": True,
+            "DEMO_TOTP_ENABLED": True,
+            "SHOW_DEMO_TOTP_QR": True,
+            "DEMO_TOTP_ISSUER": "SecureAccessAI",
+            "MFA_ENABLED": True,
+            "MFA_CODE_TTL_SECONDS": 300,
+            "SHOW_DEMO_MFA_CODE": False,
+            "DEMO_ADMIN_EMAIL": "demo-admin@example.com",
+            "DEMO_ADMIN_PASSWORD": "Pass1234!",
+            "DEMO_ADMIN_USERNAME": "demo-admin",
+        }
+    )
+    local_client = app.test_client()
+
+    challenge = _start_login(local_client, "demo-admin@example.com", "Pass1234!", ip_address="10.0.3.11")
+    assert challenge.status_code == 200
+    challenge_payload = challenge.get_json()
+    assert challenge_payload["totp_enabled"] is True
+
+    with app.app_context():
+        user = User.query.filter_by(email="demo-admin@example.com").first()
+        credential = TotpCredential.query.filter_by(user_id=user.id).first()
+        code = pyotp.TOTP(credential.secret).now()
+
+    verify = _verify_code(local_client, challenge_payload["challenge_id"], code, ip_address="10.0.3.11")
+    assert verify.status_code == 200
+    assert "access_token" in verify.get_json()
 
 
 def test_admin_can_list_and_delete_other_users(client):

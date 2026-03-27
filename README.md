@@ -34,11 +34,15 @@ cp .env.example .env
 docker compose up --build
 ```
 
-## Demo UI
+## Console UI
 
-- `GET /` opens the browser demo page
-- `GET /demo` opens the same demo page
-- The page can register users, request a time-limited login code, verify that code, call `/me`, assign roles, and load admin endpoints
+- `GET /` opens the React login page
+- `GET /dashboard` opens the React control plane after sign-in
+- `GET /demo` redirects to `/`
+- The login page can show an authenticator-compatible QR code for the seeded demo admin account
+- Sign-in uses password plus a time-limited second factor:
+  - either the issued one-time challenge code
+  - or the current 6-digit code from Microsoft Authenticator / Google Authenticator
 
 ## API Summary
 

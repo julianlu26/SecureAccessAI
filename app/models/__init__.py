@@ -92,6 +92,21 @@ class LoginChallenge(db.Model):
     user = db.relationship("User", backref="login_challenges")
 
 
+class TotpCredential(db.Model):
+    __tablename__ = "totp_credentials"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, unique=True)
+    issuer = db.Column(db.String(120), nullable=False)
+    label = db.Column(db.String(255), nullable=False)
+    secret = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), nullable=False
+    )
+
+    user = db.relationship("User", backref="totp_credential", uselist=False)
+
+
 class SecurityEvent(db.Model):
     __tablename__ = "security_events"
 

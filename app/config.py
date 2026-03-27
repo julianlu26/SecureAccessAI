@@ -17,6 +17,9 @@ class Config:
     DEMO_ADMIN_EMAIL = os.getenv("DEMO_ADMIN_EMAIL", "").strip().lower()
     DEMO_ADMIN_PASSWORD = os.getenv("DEMO_ADMIN_PASSWORD", "").strip()
     DEMO_ADMIN_USERNAME = os.getenv("DEMO_ADMIN_USERNAME", "demo-admin").strip() or "demo-admin"
+    DEMO_TOTP_ENABLED = os.getenv("DEMO_TOTP_ENABLED", "true").lower() == "true"
+    SHOW_DEMO_TOTP_QR = os.getenv("SHOW_DEMO_TOTP_QR", "true").lower() == "true"
+    DEMO_TOTP_ISSUER = os.getenv("DEMO_TOTP_ISSUER", "SecureAccessAI").strip() or "SecureAccessAI"
     MFA_ENABLED = os.getenv("MFA_ENABLED", "true").lower() == "true"
     MFA_CODE_TTL_SECONDS = int(os.getenv("MFA_CODE_TTL_SECONDS", "300"))
     MFA_REQUIRE_SAME_IP = os.getenv("MFA_REQUIRE_SAME_IP", "true").lower() == "true"
@@ -31,6 +34,9 @@ class Config:
         "LOGIN_FAILURE_WINDOW_MINUTES",
         "RISK_IP_LOOKBACK_HOURS",
         "TRUST_PROXY_HEADERS",
+        "DEMO_TOTP_ENABLED",
+        "SHOW_DEMO_TOTP_QR",
+        "DEMO_TOTP_ISSUER",
         "MFA_ENABLED",
         "MFA_CODE_TTL_SECONDS",
         "MFA_REQUIRE_SAME_IP",

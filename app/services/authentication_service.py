@@ -4,11 +4,12 @@ import secrets
 import uuid
 
 import jwt
+import pyotp
 from flask import current_app, has_app_context
 
 from app.config import Config
 from app.extensions import db
-from app.models import LoginChallenge, Role, SessionToken, User
+from app.models import LoginChallenge, Role, SessionToken, TotpCredential, User
 from app.repositories.user_repository import UserRepository
 from app.services.audit_service import AuditLogger
 from app.services.security_service import build_security_components
@@ -190,6 +191,7 @@ class AuthenticationService:
                 "challenge_id": challenge.challenge_id,
                 "expires_in_seconds": self.config.MFA_CODE_TTL_SECONDS,
                 "risk_assessment": risk_assessment,
+                "totp_enabled": self._user_totp_credential(user) is not None,
             }
             if self.config.SHOW_DEMO_MFA_CODE or self.config.TESTING:
                 response["demo_code"] = demo_code
@@ -227,7 +229,10 @@ class AuthenticationService:
             raise AuthenticationError("Verification code expired")
         if self.config.MFA_REQUIRE_SAME_IP and challenge.ip_address != ip_address:
             raise AuthenticationError("Verification request must come from the same client")
-        if challenge.code_hash != self._hash_login_code(challenge_id, code):
+
+        challenge_match = challenge.code_hash == self._hash_login_code(challenge_id, code)
+        totp_match = self._verify_totp_code(challenge.user, code)
+        if not challenge_match and not totp_match:
             self.audit_logger.log(
                 actor_user=challenge.user,
                 action="login_code",
@@ -242,6 +247,7 @@ class AuthenticationService:
         user = challenge.user
         risk_assessment = self._build_risk_assessment(user=user, email=user.email, ip_address=ip_address)
         token = self._issue_session_token(user)
+        verification_mode = "authenticator code accepted" if totp_match and not challenge_match else "time-limited verification code accepted"
 
         ip_monitor, _, _, _ = build_security_components()
         ip_monitor.log_event(
@@ -251,14 +257,14 @@ class AuthenticationService:
             event_type="login",
             outcome="success",
             risk_score=risk_assessment["score"],
-            detail="time-limited verification code accepted",
+            detail=verification_mode,
         )
         self.audit_logger.log(
             actor_user=user,
             action="login",
             status="success",
             target_email=user.email,
-            detail=self._with_ip("time-limited verification code accepted", ip_address),
+            detail=self._with_ip(verification_mode, ip_address),
         )
         db.session.commit()
         return token, risk_assessment
@@ -360,6 +366,18 @@ class AuthenticationService:
         raw = f"{challenge_id}:{code}:{self.secret_key}".encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
+    def _user_totp_credential(self, user: User | None) -> TotpCredential | None:
+        if not user:
+            return None
+        return TotpCredential.query.filter_by(user_id=user.id).first()
+
+    def _verify_totp_code(self, user: User | None, code: str) -> bool:
+        credential = self._user_totp_credential(user)
+        if not credential:
+            return False
+        totp = pyotp.TOTP(credential.secret)
+        return bool(totp.verify(code, valid_window=1))
+
     def _with_ip(self, detail: str, ip_address: str) -> str:
         return f"{detail}; ip={ip_address}"
 
@@ -374,6 +392,9 @@ class AuthenticationService:
                 "LOGIN_FAILURE_THRESHOLD",
                 "LOGIN_FAILURE_WINDOW_MINUTES",
                 "BOOTSTRAP_ADMIN_EMAIL",
+                "DEMO_TOTP_ENABLED",
+                "SHOW_DEMO_TOTP_QR",
+                "DEMO_TOTP_ISSUER",
                 "MFA_ENABLED",
                 "MFA_CODE_TTL_SECONDS",
                 "MFA_REQUIRE_SAME_IP",

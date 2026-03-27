@@ -16,7 +16,12 @@
         pageMode: {{ page_mode|tojson }},
         demoAdminEmail: {{ demo_admin_email|tojson }},
         demoAdminPassword: {{ demo_admin_password|tojson }},
-        demoAdminUsername: {{ demo_admin_username|tojson }}
+        demoAdminUsername: {{ demo_admin_username|tojson }},
+        demoTotpEnabled: {{ demo_totp_enabled|tojson }},
+        demoTotpQrDataUrl: {{ demo_totp_qr_data_url|tojson }},
+        demoTotpSecret: {{ demo_totp_secret|tojson }},
+        demoTotpIssuer: {{ demo_totp_issuer|tojson }},
+        demoTotpAccount: {{ demo_totp_account|tojson }}
       };
     </script>
     <script type="module" src="{{ url_for('static', filename='console/app.js') }}"></script>

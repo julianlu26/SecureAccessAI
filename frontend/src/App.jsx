@@ -106,6 +106,7 @@ export function App() {
 
   const isDashboardRoute = bootstrap.pageMode === 'dashboard';
   const isLoggedIn = Boolean(token);
+  const totpSetupConfigured = Boolean(bootstrap.demoTotpEnabled && bootstrap.demoTotpQrDataUrl);
 
   const currentUserEmail = useMemo(() => {
     if (!currentUser || typeof currentUser === 'string') return bootstrap.demoAdminEmail || 'operator@example.com';
@@ -159,8 +160,10 @@ export function App() {
     try {
       const data = await apiRequest('/api/auth/login', { method: 'POST', body: payload });
       setVerifyForm({ challenge_id: data.challenge_id || '', code: data.demo_code || '' });
-      setLatestCode(data.demo_code || 'No code issued yet.');
-      setMessage('Verification code issued. Complete sign-in to open the console.');
+      setLatestCode(data.demo_code || 'Use the 6-digit code from your authenticator app.');
+      setMessage(data.totp_enabled
+        ? 'Password accepted. Enter the 6-digit code from your authenticator app to open the console.'
+        : 'Verification code issued. Complete sign-in to open the console.');
       setResponse(JSON.stringify(data, null, 2));
     } catch (error) {
       setMessage(`Login failed (${error.status || 'error'}).`);
@@ -459,7 +462,7 @@ export function App() {
                 <ActionButton type="submit" disabled={!verifyForm.challenge_id || !verifyForm.code}>Verify and Open Console</ActionButton>
               </form>
               <div className="code-strip">
-                <span className="mini-label">Latest verification code</span>
+                <span className="mini-label">Authenticator / fallback code</span>
                 <CodeBlock>{latestCode}</CodeBlock>
               </div>
             </Panel>
@@ -475,6 +478,24 @@ export function App() {
                 <ActionButton onClick={() => requestLoginCode({ email: bootstrap.demoAdminEmail, password: bootstrap.demoAdminPassword })} disabled={!bootstrap.demoAdminEmail || !bootstrap.demoAdminPassword}>Request Code</ActionButton>
               </div>
             </Panel>
+
+            {totpSetupConfigured ? (
+              <Panel eyebrow="Authenticator setup" title="Scan once with your phone">
+                <div className="totp-setup">
+                  <img className="totp-qr" src={bootstrap.demoTotpQrDataUrl} alt="Authenticator QR code" />
+                  <div className="totp-copy">
+                    <p>
+                      Scan this QR code with Microsoft Authenticator or Google Authenticator, then request a login challenge and enter the 6-digit code from your phone.
+                    </p>
+                    <div className="seeded-card seeded-card--compact">
+                      <p><span>Issuer</span><code>{bootstrap.demoTotpIssuer || 'SecureAccessAI'}</code></p>
+                      <p><span>Account</span><code>{bootstrap.demoTotpAccount || bootstrap.demoAdminEmail || 'demo-admin@example.com'}</code></p>
+                      <p><span>Manual secret</span><code>{bootstrap.demoTotpSecret || 'Not configured'}</code></p>
+                    </div>
+                  </div>
+                </div>
+              </Panel>
+            ) : null}
           </section>
 
           <section className="status-row status-row--single">
