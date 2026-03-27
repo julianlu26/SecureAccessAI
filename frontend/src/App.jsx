@@ -95,7 +95,7 @@ function riskStatusTone(highRisk) {
 function responseTag(statusText) {
   if (/failed|error/i.test(statusText)) return 'error';
   if (/ready|loaded|succeeded|success/i.test(statusText)) return 'success';
-  return 'processing';
+  return 'info';
 }
 
 function parseUsers(usersPayload) {
@@ -274,15 +274,13 @@ function LoginPage({
             <Card title="Status">
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 <Alert type={responseTag(message)} showIcon message={message} />
-                <Alert
-                  type="info"
-                  showIcon
-                  message="Authenticator already enrolled"
-                  description="Use the code from Microsoft Authenticator after requesting the verification challenge."
-                />
-                <Card size="small" title="Latest API response">
-                  <pre className="json-block">{response}</pre>
-                </Card>
+                <Text type="secondary">
+                  Authenticator already enrolled. Request the challenge, then enter the current 6-digit code from Microsoft Authenticator.
+                </Text>
+                <Text type="secondary">
+                  Latest API response
+                </Text>
+                <pre className="json-block">{response}</pre>
               </Space>
             </Card>
           </Col>
