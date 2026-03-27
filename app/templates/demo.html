@@ -12,18 +12,24 @@
         <div class="sidebar-brand">
           <div class="brand-mark">SA</div>
           <div>
-            <p class="sidebar-eyebrow">Platform</p>
+            <p class="sidebar-eyebrow">Application Security</p>
             <h2>SecureAccessAI</h2>
-            <p class="sidebar-copy">Application security workspace with room for future network security controls.</p>
+            <p class="sidebar-copy">Cloud-style control plane for identity, audit, and governance.</p>
           </div>
         </div>
 
+        <p class="menu-heading">Projects</p>
         <nav class="sidebar-nav" aria-label="Primary">
           <button type="button" class="nav-item active">Overview</button>
+        </nav>
+
+        <p class="menu-heading">Manage</p>
+        <nav class="sidebar-nav" aria-label="Security areas">
           <button type="button" class="nav-item">Identity</button>
           <button type="button" class="nav-item">Threats</button>
           <button type="button" class="nav-item">Audit</button>
           <button type="button" class="nav-item">Governance</button>
+          <button type="button" class="nav-item">Network Security</button>
         </nav>
 
         <section class="sidebar-module">
@@ -40,30 +46,40 @@
 
       <div class="workspace">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">Application Security Platform</p>
-            <h1>Secure Access Demo</h1>
+          <div class="topbar-search">
+            <span class="search-icon">⌕</span>
+            <input type="text" value="" placeholder="Search by user, email, role, or IP" aria-label="Search" readonly>
           </div>
           <div class="topbar-actions">
+            <button type="button" class="create-button">Create</button>
+            <button type="button" class="icon-button" aria-label="Help">?</button>
+            <button type="button" class="icon-button" aria-label="Notifications">!</button>
             <div class="tenant-badge">Kale Health Demo Tenant</div>
             <div class="status-pill" id="global-status-chip">Ready for demo</div>
             <div class="avatar">SA</div>
           </div>
         </header>
 
-        <section class="welcome-strip card-shell">
-          <div>
-            <p class="eyebrow">Control Center</p>
-            <h2>Welcome, Analyst</h2>
-            <p class="intro">
-              Use the same backend APIs to register users, request time-limited login codes, verify access,
-              review audit activity, and manage role-based security operations.
-            </p>
+        <section class="welcome-strip card-shell project-header">
+          <div class="project-header-main">
+            <div class="project-avatar">SA</div>
+            <div>
+              <div class="project-title-row">
+                <h1>Secure Access Demo</h1>
+                <span class="project-tag">DEFAULT</span>
+              </div>
+              <p class="intro">
+                Application security platform for authentication, RBAC, audit activity, risk monitoring, and future network security workflows.
+              </p>
+            </div>
+          </div>
+          <div class="button-row wrap">
+            <button type="button" class="secondary">Open Dashboard</button>
           </div>
           <div class="tab-row" aria-hidden="true">
-            <span class="tab active">Dashboard</span>
-            <span class="tab">Tasks</span>
-            <span class="tab">Evidence</span>
+            <span class="tab active">Resources</span>
+            <span class="tab">Activity</span>
+            <span class="tab">Settings</span>
           </div>
         </section>
 
