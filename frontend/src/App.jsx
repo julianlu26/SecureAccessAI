@@ -162,10 +162,7 @@ function LoginPage({
   response,
   requestLoginCode,
   handleVerifyCode,
-  fillSeededAccess,
 }) {
-  const totpSetupConfigured = Boolean(bootstrap.demoTotpEnabled && bootstrap.demoTotpQrDataUrl);
-
   return (
     <div className="console-login-page">
       <div className="console-login-shell">
@@ -199,106 +196,90 @@ function LoginPage({
           </Row>
         </div>
 
-        <Row gutter={[20, 20]} align="stretch">
-          <Col xs={24} lg={10}>
-            <Card title="Sign in" extra={<Tag color="blue">Step 1</Tag>}>
+        <Row justify="center" gutter={[20, 20]}>
+          <Col xs={24} lg={16} xl={14}>
+            <Card title="Sign in" extra={<Tag color="blue">Password + Authenticator</Tag>}>
               <Form layout="vertical" onFinish={() => requestLoginCode()}>
-                <Form.Item label="Email">
-                  <Input
-                    size="large"
-                    prefix={<UserOutlined />}
-                    value={loginForm.email}
-                    onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
-                    placeholder="demo-admin@example.com"
-                  />
-                </Form.Item>
-                <Form.Item label="Password">
-                  <Input.Password
-                    size="large"
-                    prefix={<LockOutlined />}
-                    value={loginForm.password}
-                    onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
-                    placeholder="Pass1234!"
-                  />
-                </Form.Item>
-                <Space wrap>
-                  <Button type="primary" size="large" htmlType="submit" disabled={!loginForm.email || !loginForm.password}>
-                    Request Verification Code
-                  </Button>
-                  <Button size="large" onClick={fillSeededAccess}>Use Seeded Access</Button>
-                </Space>
+                <Row gutter={[16, 0]}>
+                  <Col xs={24}>
+                    <Form.Item label="Email">
+                      <Input
+                        size="large"
+                        prefix={<UserOutlined />}
+                        value={loginForm.email}
+                        onChange={(event) => setLoginForm((prev) => ({ ...prev, email: event.target.value }))}
+                        placeholder="demo-admin@example.com"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24}>
+                    <Form.Item label="Password">
+                      <Input.Password
+                        size="large"
+                        prefix={<LockOutlined />}
+                        value={loginForm.password}
+                        onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))}
+                        placeholder="Pass1234!"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24} md={14}>
+                    <Button type="primary" size="large" htmlType="submit" disabled={!loginForm.email || !loginForm.password} block>
+                      Request Verification Code
+                    </Button>
+                  </Col>
+                  <Col xs={24} md={10}>
+                    <Tag color="processing" className="login-inline-tag">Fallback code: {latestCode}</Tag>
+                  </Col>
+                </Row>
               </Form>
-            </Card>
-          </Col>
 
-          <Col xs={24} lg={14}>
-            <Card title="Authenticator setup" extra={<Tag color="green">Step 2</Tag>}>
-              {totpSetupConfigured ? (
-                <div className="auth-qr-grid">
-                  <div className="auth-qr-tile">
-                    <img src={bootstrap.demoTotpQrDataUrl} alt="Authenticator QR code" />
-                  </div>
-                  <div>
-                    <Paragraph className="console-muted">
-                      Scan this once with Microsoft Authenticator or Google Authenticator. Then enter the current 6-digit code after requesting a login challenge.
-                    </Paragraph>
-                    <Descriptions size="small" column={1} bordered>
-                      <Descriptions.Item label="Issuer">{bootstrap.demoTotpIssuer || 'SecureAccessAI'}</Descriptions.Item>
-                      <Descriptions.Item label="Account">{bootstrap.demoTotpAccount || bootstrap.demoAdminEmail || 'demo-admin@example.com'}</Descriptions.Item>
-                      <Descriptions.Item label="Manual secret">
-                        <span className="mono-inline">{bootstrap.demoTotpSecret || 'Not configured'}</span>
-                      </Descriptions.Item>
-                    </Descriptions>
-                  </div>
-                </div>
-              ) : (
-                <Alert type="warning" showIcon message="Authenticator QR is not configured for this demo account." />
-              )}
-            </Card>
-          </Col>
+              <div className="login-divider" />
 
-          <Col xs={24} lg={14}>
-            <Card title="Verify and open console" extra={<Tag color="purple">Step 3</Tag>}>
               <Form layout="vertical" onFinish={handleVerifyCode}>
-                <Form.Item label="Challenge ID">
-                  <Input
-                    size="large"
-                    prefix={<KeyOutlined />}
-                    value={verifyForm.challenge_id}
-                    onChange={(event) => setVerifyForm((prev) => ({ ...prev, challenge_id: event.target.value }))}
-                    placeholder="Auto-filled after password step"
-                  />
-                </Form.Item>
-                <Form.Item label="Authenticator code">
-                  <Input
-                    size="large"
-                    prefix={<SafetyCertificateOutlined />}
-                    value={verifyForm.code}
-                    onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))}
-                    placeholder="Enter current 6-digit code"
-                  />
-                </Form.Item>
-                <Space wrap>
-                  <Button type="primary" size="large" htmlType="submit" disabled={!verifyForm.challenge_id || !verifyForm.code}>
-                    Verify and Open Console
-                  </Button>
-                  <Tag color="processing">Latest fallback code: {latestCode}</Tag>
-                </Space>
+                <Row gutter={[16, 0]}>
+                  <Col xs={24}>
+                    <Form.Item label="Challenge ID">
+                      <Input
+                        size="large"
+                        prefix={<KeyOutlined />}
+                        value={verifyForm.challenge_id}
+                        onChange={(event) => setVerifyForm((prev) => ({ ...prev, challenge_id: event.target.value }))}
+                        placeholder="Auto-filled after requesting the code"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24}>
+                    <Form.Item label="Authenticator code">
+                      <Input
+                        size="large"
+                        prefix={<SafetyCertificateOutlined />}
+                        value={verifyForm.code}
+                        onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))}
+                        placeholder="Enter the current 6-digit code"
+                      />
+                    </Form.Item>
+                  </Col>
+                  <Col xs={24}>
+                    <Button type="primary" size="large" htmlType="submit" disabled={!verifyForm.challenge_id || !verifyForm.code} block>
+                      Verify and Open Console
+                    </Button>
+                  </Col>
+                </Row>
               </Form>
             </Card>
           </Col>
 
-          <Col xs={24} lg={10}>
-            <Card title="Operator status">
+          <Col xs={24} lg={8} xl={6}>
+            <Card title="Status">
               <Space direction="vertical" size={16} style={{ width: '100%' }}>
                 <Alert type={responseTag(message)} showIcon message={message} />
-                <Card size="small" title="Seeded operator" bodyStyle={{ paddingTop: 12, paddingBottom: 12 }}>
-                  <Descriptions size="small" column={1}>
-                    <Descriptions.Item label="Username">{bootstrap.demoAdminUsername || 'demo-admin'}</Descriptions.Item>
-                    <Descriptions.Item label="Email">{bootstrap.demoAdminEmail || 'Not configured'}</Descriptions.Item>
-                    <Descriptions.Item label="Password">{bootstrap.demoAdminPassword || 'Not configured'}</Descriptions.Item>
-                  </Descriptions>
-                </Card>
+                <Alert
+                  type="info"
+                  showIcon
+                  message="Authenticator already enrolled"
+                  description="Use the code from Microsoft Authenticator after requesting the verification challenge."
+                />
                 <Card size="small" title="Latest API response">
                   <pre className="json-block">{response}</pre>
                 </Card>
@@ -717,11 +698,6 @@ export function App() {
     window.location.assign('/');
   }
 
-  function fillSeededAccess() {
-    setLoginForm({ email: bootstrap.demoAdminEmail || '', password: bootstrap.demoAdminPassword || '' });
-    setMessage('Seeded access credentials copied into the sign-in form.');
-  }
-
   if (!isDashboardRoute) {
     return (
       <LoginPage
@@ -734,7 +710,6 @@ export function App() {
         response={response}
         requestLoginCode={requestLoginCode}
         handleVerifyCode={handleVerifyCode}
-        fillSeededAccess={fillSeededAccess}
       />
     );
   }

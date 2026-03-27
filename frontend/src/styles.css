@@ -93,6 +93,19 @@ body {
   max-height: 180px;
 }
 
+.login-divider {
+  height: 1px;
+  margin: 24px 0;
+  background: #e5e7eb;
+}
+
+.login-inline-tag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  margin-top: 2px;
+}
+
 .antd-console-layout {
   min-height: 100vh;
 }
