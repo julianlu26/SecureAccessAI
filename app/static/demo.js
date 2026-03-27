@@ -16,6 +16,7 @@ const demoCodeBox = document.getElementById("demo-code-box");
 const loginForm = document.getElementById("login-form");
 const openDashboardButton = document.getElementById("open-dashboard");
 const navButtons = Array.from(document.querySelectorAll("[data-nav-target]"));
+const pageSections = Array.from(document.querySelectorAll("[data-console-page]"));
 const pageMode = document.body.dataset.pageMode || "demo";
 const demoAdminEmail = document.body.dataset.demoAdminEmail || "";
 const demoAdminPassword = document.body.dataset.demoAdminPassword || "";
@@ -56,6 +57,7 @@ function syncSessionView() {
   authShell.classList.toggle("hidden", loggedIn);
   dashboardShell.classList.toggle("hidden", !loggedIn);
   globalStatusChip.textContent = loggedIn ? "Dashboard active" : "Ready for demo";
+  showConsolePage("resources");
   activateNav(loggedIn ? "resources" : "overview");
 }
 
@@ -91,9 +93,28 @@ function showCurrentUser(payload) {
   currentUserBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
 }
 
+function pageForTarget(target) {
+  if (target === "activity") {
+    return "activity";
+  }
+  if (target === "settings") {
+    return "settings";
+  }
+  return "resources";
+}
+
+function showConsolePage(page) {
+  pageSections.forEach((section) => {
+    section.classList.toggle("hidden", section.dataset.consolePage !== page);
+  });
+}
+
 function activateNav(target) {
+  const activePage = pageForTarget(target);
   navButtons.forEach((button) => {
-    button.classList.toggle("is-active", button.dataset.navTarget === target);
+    const nextTarget = button.dataset.navTarget;
+    const isTopLevelTab = ["resources", "activity", "settings"].includes(nextTarget);
+    button.classList.toggle("is-active", nextTarget === target || (isTopLevelTab && nextTarget === activePage));
   });
 }
 
@@ -128,20 +149,24 @@ function resolveNavTarget(target) {
 function handleConsoleNav(target) {
   const section = resolveNavTarget(target);
   const loggedIn = Boolean(getToken());
+  const nextPage = pageForTarget(target);
 
   if (!section) {
     showMessage("Login first to use dashboard sections.");
+    showConsolePage("resources");
     document.getElementById("auth-shell")?.scrollIntoView({behavior: "smooth", block: "start"});
     activateNav("identity");
     return;
   }
 
   if (loggedIn && pageMode === "demo") {
+    showConsolePage(nextPage);
     activateNav(target);
     goToDashboard();
     return;
   }
 
+  showConsolePage(nextPage);
   section.scrollIntoView({behavior: "smooth", block: "start"});
   activateNav(target);
 }
@@ -364,6 +389,7 @@ async function runAction(action) {
     updateDashboardMetrics({users: []}, {system_summary: {}, risk_summary: {users: []}});
     showMessage("Session cleared. You can request a new login code.");
     showResponse("Switched back to login.");
+    showConsolePage("resources");
     goToDemo();
     return;
   }
@@ -380,6 +406,7 @@ async function runAction(action) {
       updateDashboardMetrics({users: []}, {system_summary: {}, risk_summary: {users: []}});
       showMessage("Logged out.");
       showResponse(data);
+      showConsolePage("resources");
       goToDemo();
     } catch (error) {
       showMessage(`Logout failed (${error.status || "error"}).`);
@@ -443,10 +470,13 @@ function wireConsoleNavigation() {
   if (openDashboardButton) {
     openDashboardButton.addEventListener("click", () => {
       if (getToken()) {
+        showConsolePage("resources");
+        activateNav("resources");
         goToDashboard();
         return;
       }
       showMessage("Login first, then open the dashboard.");
+      showConsolePage("resources");
       document.getElementById("auth-shell")?.scrollIntoView({behavior: "smooth", block: "start"});
       activateNav("identity");
     });
