@@ -99,7 +99,6 @@ export function App() {
   const [usersPayload, setUsersPayload] = useState('Load users to view masked email, roles, and recent IP information.');
   const [latestCode, setLatestCode] = useState('No code issued yet.');
   const [metrics, setMetrics] = useState({ users: 0, securityEvents: 0, auditLogs: 0, highRisk: 0 });
-  const [registerForm, setRegisterForm] = useState({ username: '', email: '', password: '' });
   const [loginForm, setLoginForm] = useState({ email: bootstrap.demoAdminEmail || '', password: bootstrap.demoAdminPassword || '' });
   const [verifyForm, setVerifyForm] = useState({ challenge_id: '', code: '' });
   const [roleForm, setRoleForm] = useState({ email: '', role: 'admin' });
@@ -155,18 +154,6 @@ export function App() {
     }
   }
 
-  async function handleRegister(event) {
-    event.preventDefault();
-    try {
-      const data = await apiRequest('/api/auth/register', { method: 'POST', body: registerForm });
-      setMessage('Account created. Request a verification code to continue.');
-      setResponse(JSON.stringify(data, null, 2));
-      setLoginForm((prev) => ({ ...prev, email: registerForm.email, password: registerForm.password }));
-    } catch (error) {
-      setMessage(`Register failed (${error.status || 'error'}).`);
-      setResponse(JSON.stringify(error.data || error, null, 2));
-    }
-  }
 
   async function requestLoginCode(payload = loginForm) {
     try {
@@ -444,25 +431,7 @@ export function App() {
         </aside>
 
         <main className="login-main">
-          <section className="login-grid">
-            <Panel eyebrow="Register" title="Create operator account">
-              <form className="form-grid" onSubmit={handleRegister}>
-                <label>
-                  Username
-                  <input value={registerForm.username} onChange={(event) => setRegisterForm((prev) => ({ ...prev, username: event.target.value }))} placeholder="lead" />
-                </label>
-                <label>
-                  Email
-                  <input value={registerForm.email} onChange={(event) => setRegisterForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="lead@example.com" />
-                </label>
-                <label>
-                  Password
-                  <input type="password" value={registerForm.password} onChange={(event) => setRegisterForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Pass1234!" />
-                </label>
-                <ActionButton type="submit">Register</ActionButton>
-              </form>
-            </Panel>
-
+          <section className="login-grid login-grid--compact">
             <Panel eyebrow="Sign in" title="Request verification code">
               <form className="form-grid" onSubmit={(event) => { event.preventDefault(); requestLoginCode(); }}>
                 <label>
@@ -473,7 +442,7 @@ export function App() {
                   Password
                   <input type="password" value={loginForm.password} onChange={(event) => setLoginForm((prev) => ({ ...prev, password: event.target.value }))} placeholder="Pass1234!" />
                 </label>
-                <ActionButton type="submit">Request Code</ActionButton>
+                <ActionButton type="submit" disabled={!loginForm.email || !loginForm.password}>Request Code</ActionButton>
               </form>
             </Panel>
 
@@ -487,7 +456,7 @@ export function App() {
                   Code
                   <input value={verifyForm.code} onChange={(event) => setVerifyForm((prev) => ({ ...prev, code: event.target.value }))} placeholder="6-digit code" />
                 </label>
-                <ActionButton type="submit">Verify and Open Console</ActionButton>
+                <ActionButton type="submit" disabled={!verifyForm.challenge_id || !verifyForm.code}>Verify and Open Console</ActionButton>
               </form>
               <div className="code-strip">
                 <span className="mini-label">Latest verification code</span>
@@ -503,17 +472,14 @@ export function App() {
               </div>
               <div className="inline-actions">
                 <ActionButton tone="secondary" onClick={fillSeededAccess}>Use Seeded Access</ActionButton>
-                <ActionButton onClick={() => requestLoginCode({ email: bootstrap.demoAdminEmail, password: bootstrap.demoAdminPassword })}>Request Code</ActionButton>
+                <ActionButton onClick={() => requestLoginCode({ email: bootstrap.demoAdminEmail, password: bootstrap.demoAdminPassword })} disabled={!bootstrap.demoAdminEmail || !bootstrap.demoAdminPassword}>Request Code</ActionButton>
               </div>
             </Panel>
           </section>
 
-          <section className="status-row">
-            <Panel eyebrow="Status" title="Operator message">
+          <section className="status-row status-row--single">
+            <Panel eyebrow="Status" title="Authentication status">
               <CodeBlock>{message}</CodeBlock>
-            </Panel>
-            <Panel eyebrow="Response" title="API output">
-              <CodeBlock>{response}</CodeBlock>
             </Panel>
           </section>
         </main>
