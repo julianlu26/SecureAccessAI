@@ -23,12 +23,20 @@ def _client_ip() -> str:
 def assign_role():
     payload = request.get_json(silent=True) or {}
     email = payload.get("email", "").strip().lower()
+    user_id = payload.get("user_id")
     role_name = payload.get("role", "").strip().lower()
 
-    if not email or not role_name:
-        return jsonify({"error": "email and role are required"}), 400
+    if not role_name or (not email and not user_id):
+        return jsonify({"error": "user_id or email, and role are required"}), 400
 
-    user = User.query.filter_by(email=email).first()
+    user = None
+    if user_id not in (None, ""):
+        try:
+            user = db.session.get(User, int(user_id))
+        except (TypeError, ValueError):
+            return jsonify({"error": "user_id must be an integer"}), 400
+    if user is None and email:
+        user = User.query.filter_by(email=email).first()
     if not user:
         return jsonify({"error": "User not found"}), 404
 

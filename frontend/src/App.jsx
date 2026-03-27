@@ -13,6 +13,7 @@ import {
   Menu,
   Progress,
   Row,
+  Select,
   Space,
   Statistic,
   Table,
@@ -337,6 +338,8 @@ function OverviewSection({ metrics, systemSummary, riskRows, auditRows, eventRow
 }
 
 function IdentitySection({ currentUser, currentUserEmail, token, usersRows, createUserForm, setCreateUserForm, roleForm, setRoleForm, deleteUserId, setDeleteUserId, handleCreateUser, handleAssignRole, handleDeleteUser, refreshUsers }) {
+  const manageableUsers = usersRows.filter((user) => user.email !== currentUserEmail);
+  const userOptions = manageableUsers.map((user) => ({ value: user.id, label: `${user.username} (#${user.id})` }));
   const userColumns = [
     { title: 'User', dataIndex: 'username', key: 'username' },
     { title: 'Masked Email', dataIndex: 'email', key: 'email' },
@@ -389,11 +392,11 @@ function IdentitySection({ currentUser, currentUserEmail, token, usersRows, crea
         <Col xs={24} md={12} xl={5}>
           <Card title="Assign role">
             <Form layout="vertical" onFinish={handleAssignRole}>
-              <Form.Item label="User email">
-                <Input prefix={<UserOutlined />} value={roleForm.email} onChange={(event) => setRoleForm((prev) => ({ ...prev, email: event.target.value }))} placeholder="peer@example.com" />
+              <Form.Item label="User">
+                <Select value={roleForm.userId || undefined} onChange={(value) => setRoleForm((prev) => ({ ...prev, userId: value }))} options={userOptions} placeholder="Select a user" showSearch optionFilterProp="label" />
               </Form.Item>
               <Form.Item label="Role">
-                <Input prefix={<KeyOutlined />} value={roleForm.role} onChange={(event) => setRoleForm((prev) => ({ ...prev, role: event.target.value }))} placeholder="admin" />
+                <Select value={roleForm.role} onChange={(value) => setRoleForm((prev) => ({ ...prev, role: value }))} options={[{ value: 'admin', label: 'admin' }, { value: 'user', label: 'user' }]} />
               </Form.Item>
               <Button type="primary" htmlType="submit" block>Assign role</Button>
             </Form>
@@ -402,8 +405,8 @@ function IdentitySection({ currentUser, currentUserEmail, token, usersRows, crea
         <Col xs={24} md={12} xl={5}>
           <Card title="Delete user">
             <Form layout="vertical" onFinish={handleDeleteUser}>
-              <Form.Item label="User ID">
-                <Input prefix={<DeleteOutlined />} value={deleteUserId} onChange={(event) => setDeleteUserId(event.target.value)} placeholder="Load users first" />
+              <Form.Item label="User">
+                <Select value={deleteUserId || undefined} onChange={(value) => setDeleteUserId(String(value))} options={userOptions} placeholder="Select a user" showSearch optionFilterProp="label" />
               </Form.Item>
               <Button danger type="primary" htmlType="submit" block>Delete user</Button>
             </Form>
@@ -690,7 +693,7 @@ export function App() {
   const [loginForm, setLoginForm] = useState({ email: bootstrap.demoAdminEmail || '', password: bootstrap.demoAdminPassword || '' });
   const [verifyForm, setVerifyForm] = useState({ challenge_id: '', code: '' });
   const [createUserForm, setCreateUserForm] = useState({ username: '', email: '', password: '' });
-  const [roleForm, setRoleForm] = useState({ email: '', role: 'admin' });
+  const [roleForm, setRoleForm] = useState({ userId: '', role: 'admin' });
   const [deleteUserId, setDeleteUserId] = useState('');
 
   const isDashboardRoute = bootstrap.pageMode === 'dashboard';
@@ -826,7 +829,7 @@ export function App() {
       setMessage('User created successfully.');
       setResponse(prettyJson(data));
       setCreateUserForm({ username: '', email: '', password: '' });
-      setRoleForm((prev) => ({ ...prev, email: data.email || prev.email }));
+      setRoleForm((prev) => ({ ...prev, userId: data.id || prev.userId }));
       await bootstrapDashboard(token);
     } catch (error) {
       setMessage('User creation failed (' + String(error.status || 'error') + ').');
@@ -836,7 +839,7 @@ export function App() {
 
   async function handleAssignRole() {
     try {
-      const data = await apiRequest('/api/rbac/assign-role', { method: 'POST', body: roleForm, token });
+      const data = await apiRequest('/api/rbac/assign-role', { method: 'POST', body: { user_id: roleForm.userId, role: roleForm.role }, token });
       setMessage('Role assignment succeeded.');
       setResponse(prettyJson(data));
       await bootstrapDashboard(token);
