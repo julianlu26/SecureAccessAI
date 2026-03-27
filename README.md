@@ -39,10 +39,18 @@ docker compose up --build
 - `GET /` opens the React login page
 - `GET /dashboard` opens the React control plane after sign-in
 - `GET /demo` redirects to `/`
-- The login page can show an authenticator-compatible QR code for the seeded demo admin account
-- Sign-in uses password plus a time-limited second factor:
-  - either the issued one-time challenge code
-  - or the current 6-digit code from Microsoft Authenticator / Google Authenticator
+- The live sign-in flow is password plus Microsoft Authenticator / Google Authenticator verification
+- The console is organised into operational modules:
+  - Administrator Dashboard
+  - Identity and Access
+  - Threat Monitoring
+  - Audit and Activity
+  - Data Governance
+  - Future Extension
+- Identity and Access now supports:
+  - create user
+  - assign role from a selected user
+  - delete user from a selected user
 
 ## API Summary
 
@@ -56,7 +64,9 @@ docker compose up --build
 - `GET /api/admin/audit-logs` (requires `admin:read` permission)
 - `GET /api/admin/risk-summary` (requires `admin:read` permission)
 - `GET /api/admin/security-events` (requires `admin:read` permission)
-- `POST /api/rbac/assign-role` (requires `rbac:assign_role` permission)
+- `GET /api/admin/users` (requires `admin:read` permission)
+- `DELETE /api/admin/users/<id>` (requires `rbac:assign_role` permission)
+- `POST /api/rbac/assign-role` (requires `rbac:assign_role` permission, now supports `user_id` as input)
 
 ## Security Configuration Notes
 
@@ -92,7 +102,7 @@ pytest -q
 
 - Release tag: `v1.0.0`
 - CI workflow validates dependencies, compose configuration, and pytest coverage
-- Current scope includes authentication, RBAC, threat simulation, and audit/risk summary endpoints
+- Current scope includes authenticator-based sign-in, React control-plane UI, user lifecycle actions, RBAC, threat simulation, and audit/risk summary endpoints
 
 ## Assessment Artefacts
 
