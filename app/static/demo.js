@@ -14,6 +14,8 @@ const challengeInput = document.getElementById("challenge-id");
 const codeInput = document.querySelector('#verify-form input[name="code"]');
 const demoCodeBox = document.getElementById("demo-code-box");
 const loginForm = document.getElementById("login-form");
+const openDashboardButton = document.getElementById("open-dashboard");
+const navButtons = Array.from(document.querySelectorAll("[data-nav-target]"));
 const pageMode = document.body.dataset.pageMode || "demo";
 const demoAdminEmail = document.body.dataset.demoAdminEmail || "";
 const demoAdminPassword = document.body.dataset.demoAdminPassword || "";
@@ -54,6 +56,7 @@ function syncSessionView() {
   authShell.classList.toggle("hidden", loggedIn);
   dashboardShell.classList.toggle("hidden", !loggedIn);
   globalStatusChip.textContent = loggedIn ? "Dashboard active" : "Ready for demo";
+  activateNav(loggedIn ? "resources" : "overview");
 }
 
 function goToDashboard() {
@@ -86,6 +89,61 @@ function showSystemSummary(payload) {
 
 function showCurrentUser(payload) {
   currentUserBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+}
+
+function activateNav(target) {
+  navButtons.forEach((button) => {
+    button.classList.toggle("is-active", button.dataset.navTarget === target);
+  });
+}
+
+function resolveNavTarget(target) {
+  const loggedIn = Boolean(getToken());
+
+  if (target === "overview") {
+    return document.getElementById("overview-section");
+  }
+  if (target === "resources") {
+    return loggedIn ? document.getElementById("threats-section") : document.getElementById("resources-section");
+  }
+  if (target === "identity") {
+    return loggedIn ? document.getElementById("identity-section") : document.getElementById("resources-section");
+  }
+  if (target === "threats") {
+    return loggedIn ? document.getElementById("threats-section") : null;
+  }
+  if (target === "activity") {
+    return loggedIn ? document.getElementById("activity-section") : null;
+  }
+  if (target === "settings") {
+    return loggedIn ? document.getElementById("settings-section") : null;
+  }
+  if (target === "network") {
+    return loggedIn ? document.getElementById("network-section") : document.querySelector(".sidebar-module");
+  }
+
+  return null;
+}
+
+function handleConsoleNav(target) {
+  const section = resolveNavTarget(target);
+  const loggedIn = Boolean(getToken());
+
+  if (!section) {
+    showMessage("Login first to use dashboard sections.");
+    document.getElementById("auth-shell")?.scrollIntoView({behavior: "smooth", block: "start"});
+    activateNav("identity");
+    return;
+  }
+
+  if (loggedIn && pageMode === "demo") {
+    activateNav(target);
+    goToDashboard();
+    return;
+  }
+
+  section.scrollIntoView({behavior: "smooth", block: "start"});
+  activateNav(target);
 }
 
 function showLatestDemoCode(code) {
@@ -377,6 +435,24 @@ function wireDemoLoginButtons() {
   }
 }
 
+function wireConsoleNavigation() {
+  navButtons.forEach((button) => {
+    button.addEventListener("click", () => handleConsoleNav(button.dataset.navTarget));
+  });
+
+  if (openDashboardButton) {
+    openDashboardButton.addEventListener("click", () => {
+      if (getToken()) {
+        goToDashboard();
+        return;
+      }
+      showMessage("Login first, then open the dashboard.");
+      document.getElementById("auth-shell")?.scrollIntoView({behavior: "smooth", block: "start"});
+      activateNav("identity");
+    });
+  }
+}
+
 document.getElementById("register-form").addEventListener("submit", handleRegister);
 document.getElementById("login-form").addEventListener("submit", handleLogin);
 document.getElementById("verify-form").addEventListener("submit", handleVerifyCode);
@@ -387,6 +463,7 @@ document.querySelectorAll("[data-action]").forEach((button) => {
 });
 
 wireDemoLoginButtons();
+wireConsoleNavigation();
 syncSessionView();
 if (getToken()) {
   if (pageMode === "demo") {

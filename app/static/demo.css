@@ -147,6 +147,12 @@ input {
   color: #ffffff;
 }
 
+.nav-item.is-active {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  padding-left: 10px;
+}
+
 .sidebar-module {
   margin-top: auto;
   border: 1px solid rgba(255, 255, 255, 0.12);
@@ -350,11 +356,15 @@ input {
 }
 
 .tab {
+  border: 0;
+  background: transparent;
   padding: 8px 0 10px;
   border-bottom: 2px solid transparent;
   color: var(--muted);
   font-weight: 700;
   font-size: 14px;
+  border-radius: 0;
+  cursor: pointer;
 }
 
 .resource-alert {
@@ -389,7 +399,8 @@ input {
   line-height: 1.5;
 }
 
-.tab.active {
+.tab.active,
+.tab.is-active {
   color: var(--ink);
   border-bottom-color: var(--accent);
 }

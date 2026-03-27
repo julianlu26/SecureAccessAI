@@ -511,6 +511,8 @@ def test_demo_page_includes_dashboard_shell(client):
     assert b"dashboard-shell" in response.data
     assert b"Latest Demo Code" in response.data
     assert b"demo-code-box" in response.data
+    assert b'data-nav-target="resources"' in response.data
+    assert b'id="open-dashboard"' in response.data
 
 
 def test_dashboard_page_renders_dashboard_mode(client):
@@ -519,3 +521,5 @@ def test_dashboard_page_renders_dashboard_mode(client):
     assert b'data-page-mode="dashboard"' in response.data
     assert b"Security Dashboard" in response.data
     assert b"Switch Account" in response.data
+    assert b'data-nav-target="activity"' in response.data
+    assert b'id="activity-section"' in response.data

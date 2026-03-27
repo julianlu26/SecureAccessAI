@@ -23,16 +23,16 @@
 
         <p class="menu-heading">Projects</p>
         <nav class="sidebar-nav" aria-label="Primary">
-          <button type="button" class="nav-item active">Overview</button>
+          <button type="button" class="nav-item is-active" data-nav-target="overview">Overview</button>
         </nav>
 
         <p class="menu-heading">Manage</p>
         <nav class="sidebar-nav" aria-label="Security areas">
-          <button type="button" class="nav-item">Identity</button>
-          <button type="button" class="nav-item">Threats</button>
-          <button type="button" class="nav-item">Audit</button>
-          <button type="button" class="nav-item">Governance</button>
-          <button type="button" class="nav-item">Network Security</button>
+          <button type="button" class="nav-item" data-nav-target="identity">Identity</button>
+          <button type="button" class="nav-item" data-nav-target="threats">Threats</button>
+          <button type="button" class="nav-item" data-nav-target="activity">Audit</button>
+          <button type="button" class="nav-item" data-nav-target="settings">Governance</button>
+          <button type="button" class="nav-item" data-nav-target="network">Network Security</button>
         </nav>
 
         <section class="sidebar-module">
@@ -63,7 +63,7 @@
           </div>
         </header>
 
-        <section class="welcome-strip card-shell project-header">
+        <section id="overview-section" class="welcome-strip card-shell project-header">
           <div class="project-header-main">
             <div class="project-avatar">SA</div>
             <div>
@@ -77,12 +77,12 @@
             </div>
           </div>
           <div class="button-row wrap">
-            <button type="button" class="secondary">Open Dashboard</button>
+            <button type="button" id="open-dashboard" class="secondary">Open Dashboard</button>
           </div>
-          <div class="tab-row" aria-hidden="true">
-            <span class="tab active">Resources</span>
-            <span class="tab">Activity</span>
-            <span class="tab">Settings</span>
+          <div class="tab-row" aria-label="Sections">
+            <button type="button" class="tab is-active" data-nav-target="resources">Resources</button>
+            <button type="button" class="tab" data-nav-target="activity">Activity</button>
+            <button type="button" class="tab" data-nav-target="settings">Settings</button>
           </div>
         </section>
 
@@ -96,7 +96,7 @@
 
         <section id="auth-shell" class="auth-shell">
           <div class="auth-layout">
-            <article class="card-shell auth-card auth-card--wide">
+            <article id="resources-section" class="card-shell auth-card auth-card--wide">
               <div class="section-heading">
                 <div>
                   <p class="eyebrow">Access Setup</p>
@@ -199,7 +199,7 @@
         </section>
 
         <section id="dashboard-shell" class="dashboard-shell hidden">
-          <section class="hero-grid">
+          <section id="threats-section" class="hero-grid">
             <article class="card-shell hero-card">
               <div class="section-heading compact">
                 <div>
@@ -314,7 +314,7 @@
               </ol>
             </article>
 
-            <article class="card-shell content-card">
+            <article id="network-section" class="card-shell content-card">
               <div class="section-heading compact">
                 <div>
                   <p class="eyebrow">Future capability</p>
@@ -342,8 +342,8 @@
             </article>
           </section>
 
-          <section class="content-grid">
-            <article class="card-shell content-card">
+          <section id="settings-section" class="content-grid">
+            <article id="identity-section" class="card-shell content-card">
               <div class="section-heading compact">
                 <div>
                   <p class="eyebrow">User access</p>
@@ -399,7 +399,7 @@
             </article>
           </section>
 
-          <section class="content-grid">
+          <section id="activity-section" class="content-grid">
             <article class="card-shell content-card">
               <div class="section-heading compact">
                 <div>
