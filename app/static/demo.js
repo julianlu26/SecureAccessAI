@@ -2,9 +2,13 @@ const tokenKey = "secureaccessai_demo_token";
 
 const messageBox = document.getElementById("message-box");
 const responseBox = document.getElementById("response-box");
+const usersBox = document.getElementById("users-box");
 const tokenPreview = document.getElementById("token-preview");
 const sessionStatus = document.getElementById("session-status");
 const challengeInput = document.getElementById("challenge-id");
+const loginForm = document.getElementById("login-form");
+const demoAdminEmail = document.body.dataset.demoAdminEmail || "";
+const demoAdminPassword = document.body.dataset.demoAdminPassword || "";
 
 function getToken() {
   return localStorage.getItem(tokenKey) || "";
@@ -31,6 +35,15 @@ function showMessage(text) {
 
 function showResponse(payload) {
   responseBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+}
+
+function showUsers(payload) {
+  usersBox.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+}
+
+function setLoginFields(email, password) {
+  loginForm.elements.email.value = email;
+  loginForm.elements.password.value = password;
 }
 
 async function request(path, {method = "GET", body = null, auth = false} = {}) {
@@ -69,10 +82,7 @@ async function handleRegister(event) {
   }
 }
 
-async function handleLogin(event) {
-  event.preventDefault();
-  const form = new FormData(event.target);
-  const payload = Object.fromEntries(form.entries());
+async function loginWithPayload(payload) {
   try {
     const data = await request("/api/auth/login", {method: "POST", body: payload});
     if (data.challenge_id) {
@@ -90,6 +100,13 @@ async function handleLogin(event) {
     showMessage(`Login failed (${error.status || "error"}).`);
     showResponse(error.data || error);
   }
+}
+
+async function handleLogin(event) {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const payload = Object.fromEntries(form.entries());
+  await loginWithPayload(payload);
 }
 
 async function handleVerifyCode(event) {
@@ -121,10 +138,39 @@ async function handleAssignRole(event) {
   }
 }
 
+async function loadUsers() {
+  try {
+    const data = await request("/api/admin/users", {method: "GET", auth: true});
+    showMessage("Loaded users.");
+    showResponse(data);
+    showUsers(data);
+  } catch (error) {
+    showMessage(`Loading users failed (${error.status || "error"}).`);
+    showResponse(error.data || error);
+    showUsers(error.data || error);
+  }
+}
+
+async function handleDeleteUser(event) {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const userId = form.get("user_id");
+  try {
+    const data = await request(`/api/admin/users/${userId}`, {method: "DELETE", auth: true});
+    showMessage("User deletion succeeded.");
+    showResponse(data);
+    await loadUsers();
+  } catch (error) {
+    showMessage(`User deletion failed (${error.status || "error"}).`);
+    showResponse(error.data || error);
+  }
+}
+
 async function runAction(action) {
   const routes = {
     me: ["/api/auth/me", "GET"],
     dashboard: ["/api/admin/dashboard", "GET"],
+    users: ["/api/admin/users", "GET"],
     "security-events": ["/api/admin/security-events", "GET"],
     "audit-logs": ["/api/admin/audit-logs", "GET"],
     "risk-summary": ["/api/admin/risk-summary", "GET"],
@@ -143,6 +189,11 @@ async function runAction(action) {
     return;
   }
 
+  if (action === "users") {
+    await loadUsers();
+    return;
+  }
+
   const route = routes[action];
   if (!route) {
     return;
@@ -158,12 +209,33 @@ async function runAction(action) {
   }
 }
 
+function wireDemoLoginButtons() {
+  const fillButton = document.getElementById("fill-demo-login");
+  const requestButton = document.getElementById("request-demo-login");
+
+  if (fillButton) {
+    fillButton.addEventListener("click", () => {
+      setLoginFields(demoAdminEmail, demoAdminPassword);
+      showMessage("Demo admin credentials copied into the login form.");
+    });
+  }
+
+  if (requestButton) {
+    requestButton.addEventListener("click", async () => {
+      setLoginFields(demoAdminEmail, demoAdminPassword);
+      await loginWithPayload({email: demoAdminEmail, password: demoAdminPassword});
+    });
+  }
+}
+
 document.getElementById("register-form").addEventListener("submit", handleRegister);
 document.getElementById("login-form").addEventListener("submit", handleLogin);
 document.getElementById("verify-form").addEventListener("submit", handleVerifyCode);
 document.getElementById("role-form").addEventListener("submit", handleAssignRole);
+document.getElementById("delete-user-form").addEventListener("submit", handleDeleteUser);
 document.querySelectorAll("[data-action]").forEach((button) => {
   button.addEventListener("click", () => runAction(button.dataset.action));
 });
 
+wireDemoLoginButtons();
 syncSessionView();

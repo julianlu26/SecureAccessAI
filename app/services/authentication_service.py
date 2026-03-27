@@ -28,7 +28,7 @@ class AuthenticationService:
         self.expires_minutes = expires_minutes
         self.audit_logger = AuditLogger()
 
-    def register(self, username: str, email: str, password: str) -> User:
+    def register(self, username: str, email: str, password: str, ip_address: str = "unknown") -> User:
         existing = self.user_repo.get_by_email(email)
         if existing:
             raise AuthenticationError("Email already exists")
@@ -50,7 +50,7 @@ class AuthenticationService:
             action="register",
             status="success",
             target_email=user.email,
-            detail="account created",
+            detail=self._with_ip("account created", ip_address),
         )
         db.session.commit()
         return user
@@ -80,7 +80,7 @@ class AuthenticationService:
                 action="login",
                 status="blocked",
                 target_email=email,
-                detail="rate limit triggered",
+                detail=self._with_ip("rate limit triggered", ip_address),
             )
             db.session.commit()
             raise AuthenticationError(
@@ -116,7 +116,7 @@ class AuthenticationService:
                 action="login",
                 status="blocked",
                 target_email=email,
-                detail="failure threshold reached",
+                detail=self._with_ip("failure threshold reached", ip_address),
             )
             db.session.commit()
             raise AuthenticationError(
@@ -142,14 +142,13 @@ class AuthenticationService:
                 rate_limited=False,
             )
             risk_score, reasons = threat_engine.score(signals)
-            event.risk_score = risk_score
             event.detail = ", ".join(reasons) if reasons else "invalid credentials"
             self.audit_logger.log(
                 actor_user=user,
                 action="login",
                 status="failed",
                 target_email=email,
-                detail=event.detail,
+                detail=self._with_ip(event.detail or "invalid credentials", ip_address),
             )
             db.session.commit()
             failure_message = "Invalid credentials"
@@ -182,7 +181,7 @@ class AuthenticationService:
                 action="login_challenge",
                 status="success",
                 target_email=email,
-                detail="time-limited verification code issued",
+                detail=self._with_ip("time-limited verification code issued", ip_address),
             )
             db.session.commit()
 
@@ -211,7 +210,7 @@ class AuthenticationService:
             action="login",
             status="success",
             target_email=email,
-            detail="password login completed",
+            detail=self._with_ip("password login completed", ip_address),
         )
         db.session.commit()
         return {"access_token": token, "risk_assessment": risk_assessment}
@@ -228,13 +227,13 @@ class AuthenticationService:
             raise AuthenticationError("Verification code expired")
         if self.config.MFA_REQUIRE_SAME_IP and challenge.ip_address != ip_address:
             raise AuthenticationError("Verification request must come from the same client")
-        if challenge.code_hash != self._hash_login_code(challenge.challenge_id, code):
+        if challenge.code_hash != self._hash_login_code(challenge_id, code):
             self.audit_logger.log(
                 actor_user=challenge.user,
                 action="login_code",
                 status="failed",
                 target_email=challenge.email,
-                detail="invalid verification code",
+                detail=self._with_ip("invalid verification code", ip_address),
             )
             db.session.commit()
             raise AuthenticationError("Invalid verification code")
@@ -259,12 +258,12 @@ class AuthenticationService:
             action="login",
             status="success",
             target_email=user.email,
-            detail="time-limited verification code accepted",
+            detail=self._with_ip("time-limited verification code accepted", ip_address),
         )
         db.session.commit()
         return token, risk_assessment
 
-    def logout(self, token: str) -> None:
+    def logout(self, token: str, ip_address: str = "unknown") -> None:
         payload = jwt.decode(token, self.secret_key, algorithms=["HS256"])
         jti = payload.get("jti")
         session = SessionToken.query.filter_by(jti=jti).first()
@@ -275,7 +274,7 @@ class AuthenticationService:
                 action="logout",
                 status="success",
                 target_email=session.user.email,
-                detail="session revoked",
+                detail=self._with_ip("session revoked", ip_address),
             )
             db.session.commit()
 
@@ -360,6 +359,9 @@ class AuthenticationService:
     def _hash_login_code(self, challenge_id: str, code: str) -> str:
         raw = f"{challenge_id}:{code}:{self.secret_key}".encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
+
+    def _with_ip(self, detail: str, ip_address: str) -> str:
+        return f"{detail}; ip={ip_address}"
 
     @property
     def config(self) -> Config:

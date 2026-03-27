@@ -14,6 +14,9 @@ class Config:
     RISK_IP_LOOKBACK_HOURS = int(os.getenv("RISK_IP_LOOKBACK_HOURS", "24"))
     TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() == "true"
     BOOTSTRAP_ADMIN_EMAIL = os.getenv("BOOTSTRAP_ADMIN_EMAIL", "").strip().lower()
+    DEMO_ADMIN_EMAIL = os.getenv("DEMO_ADMIN_EMAIL", "").strip().lower()
+    DEMO_ADMIN_PASSWORD = os.getenv("DEMO_ADMIN_PASSWORD", "").strip()
+    DEMO_ADMIN_USERNAME = os.getenv("DEMO_ADMIN_USERNAME", "demo-admin").strip() or "demo-admin"
     MFA_ENABLED = os.getenv("MFA_ENABLED", "true").lower() == "true"
     MFA_CODE_TTL_SECONDS = int(os.getenv("MFA_CODE_TTL_SECONDS", "300"))
     MFA_REQUIRE_SAME_IP = os.getenv("MFA_REQUIRE_SAME_IP", "true").lower() == "true"

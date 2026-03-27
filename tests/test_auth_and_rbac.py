@@ -426,3 +426,79 @@ def test_demo_alias_page_renders(client):
     response = client.get("/demo")
     assert response.status_code == 200
     assert b"Login Demo Page" in response.data
+
+
+def test_demo_admin_seeded_account_can_complete_demo_login_flow():
+    RateLimiter.reset()
+    app = create_app(
+        {
+            "TESTING": True,
+            "SQLALCHEMY_DATABASE_URI": "sqlite:///:memory:",
+            "SECRET_KEY": "test-secret",
+            "TRUST_PROXY_HEADERS": True,
+            "MFA_ENABLED": True,
+            "MFA_CODE_TTL_SECONDS": 300,
+            "SHOW_DEMO_MFA_CODE": True,
+            "DEMO_ADMIN_EMAIL": "demo-admin@example.com",
+            "DEMO_ADMIN_PASSWORD": "Pass1234!",
+            "DEMO_ADMIN_USERNAME": "demo-admin",
+        }
+    )
+    local_client = app.test_client()
+
+    page = local_client.get("/demo")
+    assert page.status_code == 200
+    assert b"Quick Demo Login" in page.data
+    assert b"demo-admin@example.com" in page.data
+
+    challenge = _start_login(local_client, "demo-admin@example.com", "Pass1234!", ip_address="10.0.3.10")
+    assert challenge.status_code == 200
+    payload = challenge.get_json()
+    assert payload["mfa_required"] is True
+    verify = _verify_code(local_client, payload["challenge_id"], payload["demo_code"], ip_address="10.0.3.10")
+    assert verify.status_code == 200
+
+    token = verify.get_json()["access_token"]
+    me = local_client.get("/api/auth/me", headers=_auth_header(token))
+    assert me.status_code == 200
+    assert "admin" in me.get_json()["roles"]
+
+
+def test_admin_can_list_and_delete_other_users(client):
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    _register(client, "peer", "peer@example.com", "Pass1234!")
+
+    token = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.3.20").get_json()["access_token"]
+    users_response = client.get("/api/admin/users", headers=_auth_header(token))
+    assert users_response.status_code == 200
+    users = users_response.get_json()["users"]
+    peer = next(user for user in users if user["username"] == "peer")
+    assert peer["masked_email"].startswith("p***@")
+
+    delete_response = client.delete(f"/api/admin/users/{peer['id']}", headers=_auth_header(token))
+    assert delete_response.status_code == 200
+    assert delete_response.get_json()["deleted_user"]["id"] == peer["id"]
+
+    after = client.get("/api/admin/users", headers=_auth_header(token))
+    assert all(user["username"] != "peer" for user in after.get_json()["users"])
+
+    self_delete = client.delete("/api/admin/users/1", headers=_auth_header(token))
+    assert self_delete.status_code == 400
+
+
+def test_audit_logs_include_masked_ip_detail(client):
+    _register(client, "lead", "lead@example.com", "Pass1234!")
+    _register(client, "peer", "peer@example.com", "Pass1234!")
+
+    token = _login_from_ip(client, "lead@example.com", "Pass1234!", "10.0.3.30").get_json()["access_token"]
+    client.post(
+        "/api/rbac/assign-role",
+        json={"email": "peer@example.com", "role": "admin"},
+        headers={**_auth_header(token), "X-Forwarded-For": "10.0.3.31"},
+    )
+
+    logs = client.get("/api/admin/audit-logs", headers=_auth_header(token))
+    assert logs.status_code == 200
+    details = [log["detail"] for log in logs.get_json()["logs"] if log.get("detail")]
+    assert any("ip=" in detail for detail in details)
+    assert any("***" in detail for detail in details)

@@ -1,4 +1,4 @@
-from flask import Blueprint, g, jsonify, request
+from flask import Blueprint, current_app, g, jsonify, request
 
 from app.extensions import db
 from app.middleware.auth import require_permission
@@ -7,6 +7,15 @@ from app.services.audit_service import AuditLogger
 from app.services.authorization_service import RBACService
 
 rbac_bp = Blueprint("rbac", __name__, url_prefix="/api/rbac")
+
+
+
+def _client_ip() -> str:
+    if current_app.config.get("TRUST_PROXY_HEADERS"):
+        forwarded_for = request.headers.get("X-Forwarded-For", "")
+        if forwarded_for:
+            return forwarded_for.split(",")[0].strip()
+    return request.remote_addr or "unknown"
 
 
 @rbac_bp.post("/assign-role")
@@ -32,7 +41,7 @@ def assign_role():
         action="assign_role",
         status="success",
         target_email=user.email,
-        detail=f"assigned role={role_name}",
+        detail=f"assigned role={role_name}; ip={_client_ip()}",
     )
     db.session.commit()
     return jsonify({"message": "Role assigned", "roles": [r.name for r in user.roles]})

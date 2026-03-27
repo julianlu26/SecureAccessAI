@@ -7,6 +7,7 @@ from app.services.authorization_service import AuthorizationEngine
 auth_bp = Blueprint("auth", __name__, url_prefix="/api/auth")
 
 
+
 def _client_ip() -> str:
     if current_app.config.get("TRUST_PROXY_HEADERS"):
         forwarded_for = request.headers.get("X-Forwarded-For", "")
@@ -26,7 +27,12 @@ def register():
         return jsonify({"error": "username, email, and password are required"}), 400
 
     try:
-        user = build_auth_service().register(username=username, email=email, password=password)
+        user = build_auth_service().register(
+            username=username,
+            email=email,
+            password=password,
+            ip_address=_client_ip(),
+        )
     except AuthenticationError:
         return jsonify({"error": "Unable to register account"}), 400
 
@@ -88,7 +94,7 @@ def verify_code():
 @auth_bp.post("/logout")
 @require_auth
 def logout():
-    build_auth_service().logout(g.current_token)
+    build_auth_service().logout(g.current_token, ip_address=_client_ip())
     return jsonify({"message": "Logged out"})
 
 

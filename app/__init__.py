@@ -2,6 +2,7 @@ from flask import Flask, jsonify
 
 from app.config import Config
 from app.extensions import db
+from app.models import Role, User
 from app.routes.admin import admin_bp
 from app.routes.auth import auth_bp
 from app.routes.rbac import rbac_bp
@@ -26,6 +27,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     with app.app_context():
         db.create_all()
         seed_rbac()
+        _ensure_demo_admin(app)
         db.session.commit()
 
     app.register_blueprint(auth_bp)
@@ -38,3 +40,28 @@ def create_app(test_config: dict | None = None) -> Flask:
         return jsonify({"status": "ok"})
 
     return app
+
+
+def _ensure_demo_admin(app: Flask) -> None:
+    email = app.config.get("DEMO_ADMIN_EMAIL", "").strip().lower()
+    password = app.config.get("DEMO_ADMIN_PASSWORD", "").strip()
+    username = app.config.get("DEMO_ADMIN_USERNAME", "demo-admin").strip() or "demo-admin"
+    if not email or not password:
+        return
+
+    user = User.query.filter_by(email=email).first()
+    if not user:
+        user = User(username=username, email=email, is_active=True)
+        db.session.add(user)
+    else:
+        user.username = username
+        user.is_active = True
+
+    user.set_password(password)
+
+    admin_role = Role.query.filter_by(name="admin").first()
+    user_role = Role.query.filter_by(name="user").first()
+    if admin_role and admin_role not in user.roles:
+        user.roles.append(admin_role)
+    if user_role and user_role not in user.roles:
+        user.roles.append(user_role)
